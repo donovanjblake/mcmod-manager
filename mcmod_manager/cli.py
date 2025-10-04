@@ -4,7 +4,7 @@ import argparse
 import re
 from pathlib import Path
 
-import modrinth_manager as mc
+import mcmod_manager as mc
 
 
 class NotAFileError(Exception):
@@ -65,11 +65,10 @@ def load_config(path: None | Path) -> mc.ModrinthConfig:
     return mc.ModrinthConfig.loads(path.read_text())
 
 
-if __name__ == "__main__":
-    import argparse
-
-    ARGS = parse_args()
-    print(f"{ARGS=}")  # noqa: T201
+def main() -> None:
+    """Entry point for mcmods cli script."""
+    args = parse_args()
+    print(f"{args=}")  # noqa: T201
 
     with mc.LabrinthSession() as session:
         print("Labrinth session initialized.")  # noqa: T201

@@ -2,8 +2,9 @@
 
 import json
 
-import mod_classes as mc
 from requests import PreparedRequest, Request, Response, Session
+
+from mcmod_manager import mod_classes as mc
 
 
 class LabrinthError(Exception):

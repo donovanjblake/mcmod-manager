@@ -5,7 +5,7 @@ from __future__ import annotations
 import tomllib
 from dataclasses import dataclass
 
-import mod_classes as mc
+from mcmod_manager.mod_classes import LoaderKind
 
 
 @dataclass
@@ -13,7 +13,7 @@ class ModrinthConfig:
     """Modrinth configuration."""
 
     game_version: str
-    loaders: list[mc.LoaderKind]
+    loaders: list[LoaderKind]
     api_url: str
     mods: list[str]
 
@@ -24,7 +24,7 @@ class ModrinthConfig:
         modpack = data["modpack"]
         return ModrinthConfig(
             game_version=modpack["game_version"],
-            loaders=[mc.LoaderKind(each.lower()) for each in modpack["loaders"]],
+            loaders=[LoaderKind(each.lower()) for each in modpack["loaders"]],
             api_url=modpack.get("url", "https://api.modrinth.com/"),
             mods=modpack["mods"],
         )
