@@ -1,0 +1,11 @@
+[modpack]
+game_verison = "1.21.5"
+loaders = ["fabric", "datapack"]
+
+mods = [
+    "blazeandcaves-advancements-pack",
+    "iris",
+    "sodium",
+    "lithium",
+    "distanthorizons",
+]

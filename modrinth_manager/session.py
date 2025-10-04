@@ -2,9 +2,8 @@
 
 import json
 
-from requests import PreparedRequest, Request, Response, Session
-
 import modrinth_classes as mc
+from requests import PreparedRequest, Request, Response, Session
 
 
 class LabrinthError(Exception):
@@ -59,7 +58,7 @@ class LabrinthSession:
         game_version: str,
         loader: str,
     ) -> None | mc.ProjectVersion:
-        """Get the latest release of a project that supports given game version and loader."""
+        """Get the latest version of a project that supports given game version and loader."""
         request = self._request_project_version(project, game_version, loader)
         response = self._send(request.prepare())
         if not response.ok:
