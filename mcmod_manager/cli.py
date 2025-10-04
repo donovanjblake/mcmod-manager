@@ -4,9 +4,7 @@ import argparse
 import re
 from pathlib import Path
 
-import classes as mc
-
-import session as ls
+import modrinth_manager as mc
 
 
 class NotAFileError(Exception):
@@ -59,12 +57,21 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def load_config(path: None | Path) -> mc.ModrinthConfig:
+    """Load the config from the given path of a default path."""
+    if path is not None:
+        return mc.ModrinthConfig.loads(path.read_text())
+    path = Path("./modrinth.toml")
+    return mc.ModrinthConfig.loads(path.read_text())
+
+
 if __name__ == "__main__":
     import argparse
 
     ARGS = parse_args()
     print(f"{ARGS=}")  # noqa: T201
-    with ls.LabrinthSession() as session:
+
+    with mc.LabrinthSession() as session:
         print("Labrinth session initialized.")  # noqa: T201
         response = session.test_connection()
         print(f"connection test: {response}")  # noqa: T201

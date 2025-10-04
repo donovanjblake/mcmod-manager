@@ -2,7 +2,7 @@
 
 import json
 
-import modrinth_classes as mc
+import mod_classes as mc
 from requests import PreparedRequest, Request, Response, Session
 
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import tomllib
 from dataclasses import dataclass
 
-import modrinth_classes as mc
+import mod_classes as mc
 
 
 @dataclass

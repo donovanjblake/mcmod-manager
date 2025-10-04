@@ -3,7 +3,7 @@ requires = ["flit_core >=3.12,<4"]
 build-backend = "flit_core.buildapi"
 
 [project]
-name = "modrinth-manager"
+name = "mcmod-manager"
 version = "0.1.0"
 requires-python = ">= 3.12"
 description = "A mod manager for Minecraft written in Python that uses the Modrinth Labrinth API."
@@ -24,7 +24,7 @@ dev = [
 ]
 
 [project.scripts]
-mcmods = "modrinth_manager:cli.py"
+mcmods = "mcmod_manager:cli.py"
 
 [tool.ruff]
 line-length = 100
