@@ -1,0 +1,31 @@
+[project]
+name = "modrinth-manager"
+version = "0.1.0"
+requires-python = ">= 3.12"
+description = "A mod manager for Minecraft written in Python that uses the Modrinth Labrinth API."
+readme = "README.md"
+keywords = ["Minecraft", "Modrinth"]
+authors = [
+    {name = "Donovan Blake", email = "donovanjblake@gmail.com"},
+]
+
+dependencies = [
+    "requests==2.32.5"
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff==0.13.3"
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "D203",
+    "D213",
+    "COM812",
+]
