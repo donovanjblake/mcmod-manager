@@ -84,9 +84,9 @@ def load_config(path: None | Path) -> MCModsConfig:
 
 def _get_version(session: mc.LabrinthSession, project: ProjectVersion, width: int) -> None | mc.ModrinthProjectVersion:
     """Try to get the version."""
-    prefix = f"Find {project.name}: ".ljust(width + len("Find : "), ".") + " "
+    prefix = f"{project.name}: ".ljust(width + len(": "), ".") + " "
     result = session.get_project_version(project.name, project.game_version, project.loader)
-    return result.inspect_err(lambda x: print(f"{prefix}\x1b[31m{x}\x1b[m")).inspect(lambda x: print(f"{prefix}{x.name}")).ok()
+    return result.inspect_err(lambda x: print(f"{prefix}\x1b[31m{x}\x1b[m")).inspect(lambda x: print(f"{prefix}Found {x.name}")).ok()
 
 
 def _download(session: mc.LabrinthSession, version: mc.ModrinthProjectVersion, folder: Path) -> bool:
