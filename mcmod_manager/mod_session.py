@@ -1,8 +1,7 @@
 """A wrapper class for a session with the Labrinth API."""
 
-import json
 
-from requests import PreparedRequest, Request, Response, Session
+from requests import Request, Response, Session
 
 from mcmod_manager import mod_classes as mc
 from mcmod_manager.result import Err, Ok, Result
@@ -32,15 +31,14 @@ class LabrinthSession:
         """Exit the context for this session."""
         self.session.close()
 
-    def _request(self, method: str, path: str, params: dict[str, str]) -> Request:
-        url = f"{self.url}{path}"
-        return Request(method, url=url, params=params)
+    def _get(self, path: None | str = None, params: None | dict[str, str] = None) -> Response:
+        url = self.url + ("" if path is None else path)
+        return self.session.get(url=url, params=params)
 
-    def _request_project_version(
+    def _get_project_version(
         self, project: str, game_version: str, loader: mc.LoaderKind
-    ) -> Request:
-        return self._request(
-            "GET",
+    ) -> Response:
+        return self._get(
             f"v2/project/{project}/version",
             {
                 "loaders": f'["{loader.value}"]',
@@ -48,12 +46,39 @@ class LabrinthSession:
             },
         )
 
-    def _send(self, request: PreparedRequest) -> Response:
-        return self.session.send(request)
-
     def test_connection(self) -> bool:
         """Test the connection to the Labrinth API."""
-        return self._send(self._request("GET", "", {}).prepare()).ok
+        return self._get().ok
+
+    def check_enums(self) -> Result[None, str]:
+        """Check for validity of the internal enumerations."""
+
+        def check_enum(path: str, enum_kind: type) -> Result[None, str]:
+            response = self._get(path)
+            if not response:
+                return Err(_response_str(response))
+            enums = {each.value for each in enum_kind}
+            names = {each["name"] for each in response.json()}
+            errs = []
+            only = enums.difference(names)
+            if only:
+                errs.append(f"Extra enumerators: {only!r}")
+            only = names.difference(enums)
+            if only:
+                errs.append(f"Missing enumerators: {only!r}")
+            if errs:
+                return Err(", ".join(errs))
+            return Ok(None)
+
+        errs = filter(
+            None,
+            [
+                check_enum("v2/tag/loader", mc.LoaderKind).err(),
+            ],
+        )
+        if errs:
+            return Err(", ".join(errs))
+        return Ok(None)
 
     def get_project_version(
         self,
@@ -62,18 +87,22 @@ class LabrinthSession:
         loader: mc.LoaderKind,
     ) -> Result[mc.ModrinthProjectVersion, str]:
         """Get the latest version of a project that supports given game version and loader."""
-        request = self._request_project_version(project, game_version, loader)
-        response = self._send(request.prepare())
+        response = self._get_project_version(project, game_version, loader)
         if not response:
-            return Err(f"{response.status_code}: {response.text}")
+            x_game_version = game_version.rsplit(".", 1)+".x"
+            response = self._get_project_version(project, x_game_version, loader)
+        if not response:
+            return Err(_response_str(response))
         versions = [_to_project_version(entry) for entry in response.json()]
         if not versions:
             return Err("No versions found matching the given filters.")
         return Ok(sorted(versions, key=lambda x: x.published)[-1])
 
-    def download_project_version(self, version: mc.ModrinthProjectVersion) -> Result[list[bytes], str]:
+    def download_project_version(
+        self, version: mc.ModrinthProjectVersion
+    ) -> Result[list[bytes], str]:
         """Download the files for a project version."""
-        result=[]
+        result = []
         for filelink in version.files:
             request = Request("GET", filelink.url)
             response = self._send(request.prepare())
@@ -84,8 +113,6 @@ class LabrinthSession:
                 return Err(f"{filelink}: Downloaded file is empty.")
             result.append(data)
         return Ok(result)
-
-
 
 
 def _to_project_version(data: dict) -> mc.ModrinthProjectVersion:
@@ -110,8 +137,10 @@ def _to_version_dependency(data: dict) -> mc.VersionDependency:
         kind=mc.DependencyKind(data["dependency_type"].lower()),
     )
 
+
 def _to_file_link(data: dict) -> mc.FileLink:
-    return mc.FileLink(
-        url=data["url"],
-        filename=data["filename"]
-    )
+    return mc.FileLink(url=data["url"], filename=data["filename"])
+
+
+def _response_str(response: Response) -> str:
+    return f"Response(status_code={response.status_code!r}, text={response.text!r})"

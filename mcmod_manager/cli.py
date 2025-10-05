@@ -69,7 +69,12 @@ def parse_args() -> argparse.Namespace:
         "--download",
         type=type_parent_exists,
         nargs="?",
-        help="Whether and where to download the files. Defaults to loader-version."
+        help="Whether and where to download the files. Defaults to loader-version.",
+    )
+    parser.add_argument(
+        "--validate",
+        action="store_true",
+        help="Development option. Check internal data for inconsistencies with server.",
     )
     return parser.parse_args()
 
@@ -82,21 +87,36 @@ def load_config(path: None | Path) -> MCModsConfig:
     return MCModsConfig.loads(path.read_text())
 
 
-def _get_version(session: mc.LabrinthSession, project: ProjectVersion, width: int) -> None | mc.ModrinthProjectVersion:
+def _overprint(x: str) -> None:
+    print(f"\x1b[A\x1b[K{x}")  # noqa: T201
+
+
+def _get_version(
+    session: mc.LabrinthSession, project: ProjectVersion, width: int
+) -> None | mc.ModrinthProjectVersion:
     """Try to get the version."""
     prefix = f"{project.name}: ".ljust(width + len(": "), ".") + " "
+    print(prefix)  # noqa: T201
     result = session.get_project_version(project.name, project.game_version, project.loader)
-    return result.inspect_err(lambda x: print(f"{prefix}\x1b[31m{x}\x1b[m")).inspect(lambda x: print(f"{prefix}Found {x.name}")).ok()
+    return (
+        result.inspect_err(lambda x: _overprint(f"{prefix}\x1b[31m{x}\x1b[m"))
+        .inspect(lambda x: _overprint(f"{prefix}Found {x.name!r}"))
+        .ok()
+    )
 
 
-def _download(session: mc.LabrinthSession, version: mc.ModrinthProjectVersion, folder: Path) -> bool:
+def _download(
+    session: mc.LabrinthSession, version: mc.ModrinthProjectVersion, folder: Path
+) -> bool:
     """Try to download the files for a version."""
-    def write_all(buffers: list[bytes])->None:
+
+    def write_all(buffers: list[bytes]) -> None:
         for filelink, buffer in zip(version.files, buffers, strict=True):
             (folder / filelink.filename).write_bytes(buffer)
-        print(f"  downloaded {len(version.files)} files")
+        print(f"  downloaded {len(version.files)} files") # noqa: T201
+
     result = session.download_project_version(version)
-    return result.inspect_err(lambda x: print(f"  download error: {x}")).inspect(write_all).is_ok()
+    return result.inspect_err(lambda x: print(f"  download error: {x}")).inspect(write_all).is_ok() # noqa: T201
 
 
 def main() -> None:
@@ -107,8 +127,11 @@ def main() -> None:
     config = load_config(args.config)
     if args.download:
         args.download.mkdir(exist_ok=True, parents=False)
+    print("Starting Labrinth session, this may take a bit...")  # noqa: T201
     with mc.LabrinthSession() as session:
-        print("Labrinth session initialized.")  # noqa: T201
+        print("Labrinth session started.")  # noqa: T201
+        if args.validate:
+            session.check_enums().inspect_err(lambda x: print(f"\x1b[33m{x}\x1b[m")) # noqa: T201
         width = max(len(x.name) for x in config.projects)
         for project in config.projects:
             version = _get_version(session, project, width)

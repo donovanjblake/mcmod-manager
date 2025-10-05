@@ -14,6 +14,7 @@ class LoaderKind(enum.StrEnum):
     FABRIC = enum.auto()
     NEOFORGE = enum.auto()
     QUILT = enum.auto()
+    RESOURCEPACK = enum.auto()
 
 
 @dataclass

@@ -1,7 +1,7 @@
 # Modlist used by yours truly :)
 
 [defaults]
-game_version = "1.21.5"
+game_version = "1.21.8"
 loader = "fabric"
 
 [projects]
@@ -14,3 +14,6 @@ camps_castles_carriages.defaults=true
 modmenu.defaults=true
 stellaris.defaults=true
 fpsdisplay.defaults=true
+faithful-32x={defaults=true, loader="resourcepack"}
+
+[optional-projects]

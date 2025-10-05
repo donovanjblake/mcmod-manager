@@ -190,7 +190,6 @@ class Ok[O, E]:
         """
         msg = f"unwrap_err: {self!r}"
         raise TypeError(msg)
-    
 
 
 class Err[O, E]:
