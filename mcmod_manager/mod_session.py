@@ -1,6 +1,5 @@
 """A wrapper class for a session with the Labrinth API."""
 
-
 from requests import Request, Response, Session
 
 from mcmod_manager import mod_classes as mc
@@ -89,7 +88,7 @@ class LabrinthSession:
         """Get the latest version of a project that supports given game version and loader."""
         response = self._get_project_version(project, game_version, loader)
         if not response:
-            x_game_version = game_version.rsplit(".", 1)+".x"
+            x_game_version = game_version.rsplit(".", 1) + ".x"
             response = self._get_project_version(project, x_game_version, loader)
         if not response:
             return Err(_response_str(response))

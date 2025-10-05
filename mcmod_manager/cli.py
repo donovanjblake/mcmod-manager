@@ -113,10 +113,10 @@ def _download(
     def write_all(buffers: list[bytes]) -> None:
         for filelink, buffer in zip(version.files, buffers, strict=True):
             (folder / filelink.filename).write_bytes(buffer)
-        print(f"  downloaded {len(version.files)} files") # noqa: T201
+        print(f"  downloaded {len(version.files)} files")  # noqa: T201
 
     result = session.download_project_version(version)
-    return result.inspect_err(lambda x: print(f"  download error: {x}")).inspect(write_all).is_ok() # noqa: T201
+    return result.inspect_err(lambda x: print(f"  download error: {x}")).inspect(write_all).is_ok()  # noqa: T201
 
 
 def main() -> None:
@@ -131,7 +131,7 @@ def main() -> None:
     with mc.LabrinthSession() as session:
         print("Labrinth session started.")  # noqa: T201
         if args.validate:
-            session.check_enums().inspect_err(lambda x: print(f"\x1b[33m{x}\x1b[m")) # noqa: T201
+            session.check_enums().inspect_err(lambda x: print(f"\x1b[33m{x}\x1b[m"))  # noqa: T201
         width = max(len(x.name) for x in config.projects)
         for project in config.projects:
             version = _get_version(session, project, width)
