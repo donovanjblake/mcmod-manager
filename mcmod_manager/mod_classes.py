@@ -17,7 +17,7 @@ class LoaderKind(enum.StrEnum):
 
 
 @dataclass
-class Project:
+class ModrinthProject:
     """Modrinth project information."""
 
     name: str
@@ -29,7 +29,7 @@ class Project:
 
 
 @dataclass
-class ProjectVersion:
+class ModrinthProjectVersion:
     """Modrinth project version information."""
 
     name: str
@@ -38,9 +38,17 @@ class ProjectVersion:
     loaders: list[LoaderKind]
     game_versions: list[str]
     version: str
-    files: list[str]
+    files: list[FileLink]
     published: str
     dependencies: list[VersionDependency]
+
+
+@dataclass
+class FileLink:
+    """Information for downloading a file."""
+
+    url: str
+    filename: str
 
 
 @dataclass

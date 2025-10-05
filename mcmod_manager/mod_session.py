@@ -5,6 +5,7 @@ import json
 from requests import PreparedRequest, Request, Response, Session
 
 from mcmod_manager import mod_classes as mc
+from mcmod_manager.result import Err, Ok, Result
 
 
 class LabrinthError(Exception):
@@ -31,18 +32,19 @@ class LabrinthSession:
         """Exit the context for this session."""
         self.session.close()
 
-    def _request(self, method: str, path: str, params: dict) -> Request:
+    def _request(self, method: str, path: str, params: dict[str, str]) -> Request:
         url = f"{self.url}{path}"
-        params = {k: json.dumps(v) for k, v in params.items()}
         return Request(method, url=url, params=params)
 
-    def _request_project_version(self, project: str, game_version: str, loader: str) -> Request:
+    def _request_project_version(
+        self, project: str, game_version: str, loader: mc.LoaderKind
+    ) -> Request:
         return self._request(
             "GET",
             f"v2/project/{project}/version",
             {
-                "loaders": [loader],
-                "game_versions": [game_version],
+                "loaders": f'["{loader.value}"]',
+                "game_versions": f'["{game_version}"]',
             },
         )
 
@@ -57,26 +59,42 @@ class LabrinthSession:
         self,
         project: str,
         game_version: str,
-        loader: str,
-    ) -> None | mc.ProjectVersion:
+        loader: mc.LoaderKind,
+    ) -> Result[mc.ModrinthProjectVersion, str]:
         """Get the latest version of a project that supports given game version and loader."""
         request = self._request_project_version(project, game_version, loader)
         response = self._send(request.prepare())
-        if not response.ok:
-            return None
+        if not response:
+            return Err(f"{response.status_code}: {response.text}")
         versions = [_to_project_version(entry) for entry in response.json()]
         if not versions:
-            return None
-        return sorted(versions, key=lambda x: x.published)[-1]
+            return Err("No versions found matching the given filters.")
+        return Ok(sorted(versions, key=lambda x: x.published)[-1])
+
+    def download_project_version(self, version: mc.ModrinthProjectVersion) -> Result[list[bytes], str]:
+        """Download the files for a project version."""
+        result=[]
+        for filelink in version.files:
+            request = Request("GET", filelink.url)
+            response = self._send(request.prepare())
+            if not response:
+                return Err(f"{filelink}: {response.status_code}: {response.text}")
+            data = bytes(response.text, encoding="utf-8")
+            if not data:
+                return Err(f"{filelink}: Downloaded file is empty.")
+            result.append(data)
+        return Ok(result)
 
 
-def _to_project_version(data: dict) -> mc.ProjectVersion:
-    return mc.ProjectVersion(
+
+
+def _to_project_version(data: dict) -> mc.ModrinthProjectVersion:
+    return mc.ModrinthProjectVersion(
         name=data["name"],
         id_=data["id"],
         project_id=data["project_id"],
         version=data["version_number"],
-        files=[each["url"] for each in data["files"]],
+        files=[_to_file_link(each) for each in data["files"]],
         game_versions=data["game_versions"],
         loaders=[mc.LoaderKind(each.lower()) for each in data["loaders"]],
         published=data["date_published"],
@@ -90,4 +108,10 @@ def _to_version_dependency(data: dict) -> mc.VersionDependency:
         project_id=data["project_id"],
         file_name=data["file_name"],
         kind=mc.DependencyKind(data["dependency_type"].lower()),
+    )
+
+def _to_file_link(data: dict) -> mc.FileLink:
+    return mc.FileLink(
+        url=data["url"],
+        filename=data["filename"]
     )
