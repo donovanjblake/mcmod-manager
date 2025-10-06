@@ -9,12 +9,34 @@ from dataclasses import dataclass
 class LoaderKind(enum.StrEnum):
     """Enumeration of mod loaders."""
 
+    BABRIC = enum.auto()
+    BTA_BABRIC = "bta-babric"
+    BUKKIT = enum.auto()
+    BUNGEECORD = enum.auto()
+    CANVAS = enum.auto()
     DATAPACK = enum.auto()
-    FORGE = enum.auto()
     FABRIC = enum.auto()
+    FOLIA = enum.auto()
+    FORGE = enum.auto()
+    IRIS = enum.auto()
+    JAVA_AGENT = "java-agent"
+    LEGACY_FABRIC = "legacy-fabric"
+    LITELOADER = enum.auto()
+    MINECRAFT = enum.auto()
+    MODLOADER = enum.auto()
     NEOFORGE = enum.auto()
+    NILLOADER = enum.auto()
+    OPTIFINE = enum.auto()
+    ORNITHE = enum.auto()
+    PAPER = enum.auto()
+    PURPUR = enum.auto()
     QUILT = enum.auto()
-    RESOURCEPACK = enum.auto()
+    RIFT = enum.auto()
+    SPIGOT = enum.auto()
+    SPONGE = enum.auto()
+    VANILLA = enum.auto()
+    VELOCITY = enum.auto()
+    WATERFALL = enum.auto()
 
 
 @dataclass

@@ -1,7 +1,6 @@
 """A wrapper class for a session with the Labrinth API."""
 
-
-from requests import Request, Response, Session
+from requests import Response, Session
 
 from mcmod_manager import mod_classes as mc
 from mcmod_manager.result import Err, Ok, Result
@@ -70,11 +69,13 @@ class LabrinthSession:
                 return Err(", ".join(errs))
             return Ok(None)
 
-        errs = filter(
-            None,
-            [
-                check_enum("v2/tag/loader", mc.LoaderKind).err(),
-            ],
+        errs = list(
+            filter(
+                None,
+                [
+                    check_enum("v2/tag/loader", mc.LoaderKind).err(),
+                ],
+            )
         )
         if errs:
             return Err(", ".join(errs))
@@ -89,7 +90,7 @@ class LabrinthSession:
         """Get the latest version of a project that supports given game version and loader."""
         response = self._get_project_version(project, game_version, loader)
         if not response:
-            x_game_version = game_version.rsplit(".", 1)+".x"
+            x_game_version = game_version.rsplit(".", 1) + ".x"
             response = self._get_project_version(project, x_game_version, loader)
         if not response:
             return Err(_response_str(response))
@@ -104,10 +105,9 @@ class LabrinthSession:
         """Download the files for a project version."""
         result = []
         for filelink in version.files:
-            request = Request("GET", filelink.url)
-            response = self._send(request.prepare())
+            response = self.session.get(filelink.url)
             if not response:
-                return Err(f"{filelink}: {response.status_code}: {response.text}")
+                return Err(f"{filelink}: {_response_str(response)}")
             data = bytes(response.text, encoding="utf-8")
             if not data:
                 return Err(f"{filelink}: Downloaded file is empty.")
