@@ -16,7 +16,8 @@ class MCModsConfig:
     game_version: str
     loader: LoaderKind
     api_url: str
-    projects: list[str]
+    projects: list[ProjectVersion]
+    optional_projects: list[ProjectVersion]
 
     @staticmethod
     def loads(text: str) -> MCModsConfig:
@@ -49,26 +50,32 @@ def loads(text: str) -> MCModsConfig:
         default_loader = LoaderKind(default_loader)
     default_url = defaults.get("url", "https://api.modrinth.com/")
 
-    projects = []
-    for name, project in data.get("projects", {}).items():
-        game_version = None
-        loader = None
-        if project.get("defaults"):
-            game_version = default_game_version
-            loader = default_loader
-        game_version = project.get("game_version") or game_version
-        loader = project.get("loader") or loader
-        projects.append(
-            ProjectVersion(
-                name=name,
-                game_version=game_version,
-                loader=LoaderKind(loader),
+    def load_projects(projects: dict) -> list[ProjectVersion]:
+        result = []
+        for name, project in projects.items():
+            game_version = None
+            loader = None
+            if project.get("defaults"):
+                game_version = default_game_version
+                loader = default_loader
+            game_version = project.get("game_version") or game_version
+            loader = project.get("loader") or loader
+            result.append(
+                ProjectVersion(
+                    name=name,
+                    game_version=game_version,
+                    loader=LoaderKind(loader),
+                )
             )
-        )
+        return result
+
+    projects = load_projects(data.get("projects", {}))
+    optional_projects = load_projects(data.get("optional-projects", {}))
 
     return MCModsConfig(
         game_version=default_game_version,
         loader=default_loader,
         api_url=default_url,
         projects=projects,
+        optional_projects=optional_projects,
     )

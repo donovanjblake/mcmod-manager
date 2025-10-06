@@ -6,7 +6,7 @@ from pathlib import Path
 
 import mcmod_manager as mc
 from mcmod_manager.mod_config import MCModsConfig, ProjectVersion
-from mcmod_manager.result import Result, Ok, Err
+from mcmod_manager.result import Err, Ok, Result
 
 
 class NotAFileError(Exception):
@@ -113,6 +113,22 @@ def _get_versions(
     return Ok(result)
 
 
+def _get_optional_versions(
+    session: mc.LabrinthSession, projects: list[ProjectVersion]
+) -> Result[list[mc.ModrinthProjectVersion], str]:
+    """Try to get all requested project versions."""
+    if not projects:
+        return Ok([])
+    print("Collecting optional projects...")  # noqa: T201
+    result = []
+    maxlen = max([len(x.name) for x in projects])
+    for project in projects:
+        version = _get_version(session, project, maxlen).ok()
+        if version:
+            result.append(version)
+    return Ok(result)
+
+
 def _download(
     session: mc.LabrinthSession, version: mc.ModrinthProjectVersion, folder: Path, width: int
 ) -> Result[None, str]:
@@ -126,7 +142,9 @@ def _download(
 
     print(prefix)  # noqa: T201
     result = session.download_project_version(version)
-    return result.inspect_err(lambda x: _overprint(f"{prefix}download error: {x}")).inspect(write_all)
+    return result.inspect_err(lambda x: _overprint(f"{prefix}download error: {x}")).inspect(
+        write_all
+    )
 
 
 def _download_all(
@@ -158,6 +176,9 @@ def main() -> None:
         if args.validate:
             session.check_enums().inspect_err(lambda x: print(f"\x1b[33m{x}\x1b[m"))  # noqa: T201
         versions = _get_versions(session, config.projects).expect("Some error finding a project")
+        optional = _get_optional_versions(session, config.optional_projects).ok()
+        if optional:
+            versions.extend(optional)
         if args.download:
             _download_all(session, versions, args.download).expect(
                 "Some error downloading a project file"
