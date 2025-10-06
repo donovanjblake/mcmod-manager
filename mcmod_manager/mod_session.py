@@ -69,12 +69,14 @@ class LabrinthSession:
                 return Err(", ".join(errs))
             return Ok(None)
 
-        errs = list(filter(
-            None,
-            [
-                check_enum("v2/tag/loader", mc.LoaderKind).err(),
-            ],
-        ))
+        errs = list(
+            filter(
+                None,
+                [
+                    check_enum("v2/tag/loader", mc.LoaderKind).err(),
+                ],
+            )
+        )
         if errs:
             return Err(", ".join(errs))
         return Ok(None)

@@ -39,7 +39,6 @@ class LoaderKind(enum.StrEnum):
     WATERFALL = enum.auto()
 
 
-
 @dataclass
 class ModrinthProject:
     """Modrinth project information."""
