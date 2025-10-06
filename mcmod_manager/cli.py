@@ -56,16 +56,6 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--config", type=type_file_exists, help="The config file to load.")
     parser.add_argument(
-        "--game-version", type=type_game_version, help="The Minecraft version to load."
-    )
-    parser.add_argument(
-        "--loaders",
-        type=type_loader_kind,
-        nargs="+",
-        action="extend",
-        help="The Minecraft version to load.",
-    )
-    parser.add_argument(
         "--download",
         type=type_parent_exists,
         nargs="?",
