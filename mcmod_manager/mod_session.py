@@ -93,10 +93,11 @@ class LabrinthSession:
             x_game_version = game_version.rsplit(".", 1) + ".x"
             response = self._get_project_version(project, x_game_version, loader)
         if not response:
-            return Err(_response_str(response))
+            return Err(f"{project}: {_response_str(response)}")
         versions = [_to_project_version(entry) for entry in response.json()]
         if not versions:
-            return Err("No versions found matching the given filters.")
+            msg = f"No versions found for {project!r} matching the given filters."
+            return Err(msg)
         return Ok(sorted(versions, key=lambda x: x.published)[-1])
 
     def download_project_version(

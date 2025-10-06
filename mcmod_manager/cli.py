@@ -6,6 +6,7 @@ from pathlib import Path
 
 import mcmod_manager as mc
 from mcmod_manager.mod_config import MCModsConfig, ProjectVersion
+from mcmod_manager.result import Result, Ok, Err
 
 
 class NotAFileError(Exception):
@@ -83,30 +84,64 @@ def _overprint(x: str) -> None:
 
 def _get_version(
     session: mc.LabrinthSession, project: ProjectVersion, width: int
-) -> None | mc.ModrinthProjectVersion:
+) -> Result[mc.ModrinthProjectVersion, str]:
     """Try to get the version."""
-    prefix = f"{project.name}: ".ljust(width + len(": "), ".") + " "
+    prefix = f"  {project.name}: ".ljust(width + len("  : "), ".") + " "
     print(prefix)  # noqa: T201
     result = session.get_project_version(project.name, project.game_version, project.loader)
-    return (
-        result.inspect_err(lambda x: _overprint(f"{prefix}\x1b[31m{x}\x1b[m"))
-        .inspect(lambda x: _overprint(f"{prefix}Found {x.name!r}"))
-        .ok()
+    return result.inspect_err(lambda x: _overprint(f"{prefix}\x1b[31m{x}\x1b[m")).inspect(
+        lambda x: _overprint(f"{prefix}Found {x.name!r}")
     )
 
 
+def _get_versions(
+    session: mc.LabrinthSession, projects: list[ProjectVersion]
+) -> Result[list[mc.ModrinthProjectVersion], str]:
+    """Try to get all requested project versions."""
+    if not projects:
+        return Ok([])
+    print("Collecting projects...")  # noqa: T201
+    result = []
+    maxlen = max([len(x.name) for x in projects])
+    for project in projects:
+        version = _get_version(session, project, maxlen)
+        match version:
+            case Err(x):
+                return Err(x)
+            case Ok(x):
+                result.append(x)
+    return Ok(result)
+
+
 def _download(
-    session: mc.LabrinthSession, version: mc.ModrinthProjectVersion, folder: Path
-) -> bool:
+    session: mc.LabrinthSession, version: mc.ModrinthProjectVersion, folder: Path, width: int
+) -> Result[None, str]:
     """Try to download the files for a version."""
+    prefix = f"  {version.name}: ".ljust(width + len("  : "), ".") + " "
 
     def write_all(buffers: list[bytes]) -> None:
         for filelink, buffer in zip(version.files, buffers, strict=True):
             (folder / filelink.filename).write_bytes(buffer)
-        print(f"  downloaded {len(version.files)} files")  # noqa: T201
+        _overprint(f"{prefix}downloaded {len(version.files)} file(s)")
 
+    print(prefix)  # noqa: T201
     result = session.download_project_version(version)
-    return result.inspect_err(lambda x: print(f"  download error: {x}")).inspect(write_all).is_ok()  # noqa: T201
+    return result.inspect_err(lambda x: _overprint(f"{prefix}download error: {x}")).inspect(write_all)
+
+
+def _download_all(
+    session: mc.LabrinthSession, versions: mc.ModrinthProjectVersion, folder: Path
+) -> Result[None, str]:
+    """Try to download all project versions."""
+    if not versions:
+        return Ok(None)
+    print("Downloading files...")  # noqa: T201
+    maxlen = max([len(x.name) for x in versions])
+    for version in versions:
+        result = _download(session, version, folder, maxlen)
+        if result.is_err():
+            return result
+    return Ok(None)
 
 
 def main() -> None:
@@ -122,10 +157,8 @@ def main() -> None:
         print("Labrinth session started.")  # noqa: T201
         if args.validate:
             session.check_enums().inspect_err(lambda x: print(f"\x1b[33m{x}\x1b[m"))  # noqa: T201
-        width = max(len(x.name) for x in config.projects)
-        for project in config.projects:
-            version = _get_version(session, project, width)
-            if version is None:
-                continue
-            if args.download:
-                _download(session, version, args.download)
+        versions = _get_versions(session, config.projects).expect("Some error finding a project")
+        if args.download:
+            _download_all(session, versions, args.download).expect(
+                "Some error downloading a project file"
+            )

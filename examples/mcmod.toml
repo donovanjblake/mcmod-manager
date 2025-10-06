@@ -1,7 +1,7 @@
 # Modlist used by yours truly :)
 
 [defaults]
-game_version = "1.21.8"
+game_version = "1.21.5"
 loader = "fabric"
 
 [projects]
@@ -10,10 +10,10 @@ iris.defaults=true
 sodium.defaults=true
 lithium.defaults=true
 distanthorizons.defaults=true
-camps_castles_carriages.defaults=true
 modmenu.defaults=true
-stellaris.defaults=true
 fpsdisplay.defaults=true
-faithful-32x={defaults=true, loader="resourcepack"}
+faithful-32x={defaults=true, loader="minecraft"}
 
 [optional-projects]
+camps_castles_carriages.defaults=true
+stellaris.defaults=true
