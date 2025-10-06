@@ -24,7 +24,7 @@ dev = [
 ]
 
 [project.scripts]
-mcmods = "mcmod_manager.cli:main"
+mcmod = "mcmod_manager.cli:main"
 
 [tool.ruff]
 line-length = 100
