@@ -30,4 +30,4 @@ jobs:
     - name: Install and Run
       run: |
         pip install .
-        mcmod --config examples/integration_test.toml --download download_test
+        mcmod --config examples/integration_test.toml --download download_test --validate

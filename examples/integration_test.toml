@@ -5,4 +5,4 @@ loader="fabric"
 [projects]
 iris.defaults=true
 blazeandcaves-advancements-pack={defaults=true, loader="datapack"}
-faithful-32x={defaults=true, loader="resourcepack"}
+faithful-32x={defaults=true, loader="minecraft"}

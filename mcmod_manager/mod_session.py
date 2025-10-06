@@ -1,6 +1,6 @@
 """A wrapper class for a session with the Labrinth API."""
 
-from requests import Request, Response, Session
+from requests import Response, Session
 
 from mcmod_manager import mod_classes as mc
 from mcmod_manager.result import Err, Ok, Result
@@ -69,12 +69,12 @@ class LabrinthSession:
                 return Err(", ".join(errs))
             return Ok(None)
 
-        errs = filter(
+        errs = list(filter(
             None,
             [
                 check_enum("v2/tag/loader", mc.LoaderKind).err(),
             ],
-        )
+        ))
         if errs:
             return Err(", ".join(errs))
         return Ok(None)
@@ -103,10 +103,9 @@ class LabrinthSession:
         """Download the files for a project version."""
         result = []
         for filelink in version.files:
-            request = Request("GET", filelink.url)
-            response = self._send(request.prepare())
+            response = self.session.get(filelink.url)
             if not response:
-                return Err(f"{filelink}: {response.status_code}: {response.text}")
+                return Err(f"{filelink}: {_response_str(response)}")
             data = bytes(response.text, encoding="utf-8")
             if not data:
                 return Err(f"{filelink}: Downloaded file is empty.")
