@@ -1,0 +1,8 @@
+[defaults]
+game_version="1.21.5"
+loader="fabric"
+
+[projects]
+iris.defaults=true
+blazeandcaves-advancements-pack={defaults=true, loader="datapack"}
+faithful-32x={defaults=true, loader="resourcepack"}
