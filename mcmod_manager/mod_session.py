@@ -1,5 +1,8 @@
 """A wrapper class for a session with the Labrinth API."""
 
+from enum import StrEnum
+from typing import Self
+
 from requests import Response, Session
 
 from mcmod_manager import mod_classes as mc
@@ -22,7 +25,7 @@ class LabrinthSession:
             msg = f"Bad response: {response.status_code}"
             raise LabrinthError(msg)
 
-    def __enter__(self) -> None:
+    def __enter__(self) -> Self:
         """Enter context for this session."""
         return self
 
@@ -52,7 +55,7 @@ class LabrinthSession:
     def check_enums(self) -> Result[None, str]:
         """Check for validity of the internal enumerations."""
 
-        def check_enum(path: str, enum_kind: type) -> Result[None, str]:
+        def check_enum(path: str, enum_kind: type[StrEnum]) -> Result[None, str]:
             response = self._get(path)
             if not response:
                 return Err(_response_str(response))
@@ -90,7 +93,7 @@ class LabrinthSession:
         """Get the latest version of a project that supports given game version and loader."""
         response = self._get_project_version(project, game_version, loader)
         if not response:
-            x_game_version = game_version.rsplit(".", 1) + ".x"
+            x_game_version = game_version.rsplit(".", 1)[0] + ".x"
             response = self._get_project_version(project, x_game_version, loader)
         if not response:
             return Err(f"{project}: {_response_str(response)}")

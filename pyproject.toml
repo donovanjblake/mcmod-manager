@@ -20,7 +20,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "ruff==0.13.3"
+    "ruff==0.13.3",
+    "mypy==1.18.2",
+    "types-requests==2.32.4.20250913"
 ]
 
 [project.scripts]

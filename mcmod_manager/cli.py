@@ -43,6 +43,7 @@ def type_game_version(arg: str) -> str:
     if matched is None:
         msg = f"Not a game version: {arg!r}"
         raise TypeError(msg)
+    return arg
 
 
 def type_loader_kind(arg: str) -> mc.LoaderKind:
@@ -92,6 +93,24 @@ def _get_version(
     return result.inspect_err(lambda x: _overprint(f"{prefix}\x1b[31m{x}\x1b[m")).inspect(
         lambda x: _overprint(f"{prefix}Found {x.name!r}")
     )
+
+
+def _get_version_dependencies(
+    session: mc.LabrinthSession, version: mc.ModrinthProjectVersion
+) -> Result[list[mc.ModrinthProjectVersion], str]:
+    """Try to get the versions for the dependencies of a project."""
+    depends = list(filter(lambda x: x.kind == mc.DependencyKind.REQUIRED, version.dependencies))
+    if not depends:
+        return Ok([])
+    result = []
+    for each in depends:
+        dep_ver = session.get_project_version(each.project_id, version.game_version, version.loader)
+        match dep_ver:
+            case Err(x):
+                return Err(x)
+            case Ok(x):
+                result.append(x)
+    return Ok(result)
 
 
 def _get_versions(
@@ -175,7 +194,9 @@ def main() -> None:
         print("Labrinth session started.")  # noqa: T201
         if args.validate:
             session.check_enums().inspect_err(lambda x: print(f"\x1b[33m{x}\x1b[m"))  # noqa: T201
-        versions = _get_versions(session, config.projects).expect("Some error finding a project")
+        versions = _get_versions(session, config.projects).expect(
+            "Some error finding a required project"
+        )
         optional = _get_optional_versions(session, config.optional_projects).ok()
         if optional:
             versions.extend(optional)

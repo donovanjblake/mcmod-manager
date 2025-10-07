@@ -19,96 +19,15 @@ class ResultError(Exception):
         super().__init__("Do not use the Result type. Use Ok() or Err() instead.")
 
 
-class Result[O, E]:
-    """Rust-like Result type."""
-
-    def __init__(self) -> None:
-        """Create a Result object. THIS WILL RAISE. Use Ok() or Err() isntead."""
-        raise ResultError
-
-    def __repr__(self) -> str:
-        """Return a string representation of this Result."""
-        raise ResultError
-
-    def is_ok(self) -> bool:
-        """Return `True` if the result is `Ok`."""
-        raise ResultError
-
-    def is_ok_and(self, _function: Callable[[O], bool]) -> bool:
-        """Return `True` if the result is `Ok` and the value inside of it matches a predicate."""
-        raise ResultError
-
-    def is_err(self) -> bool:
-        """Return `True` if the result is `Err`."""
-        raise ResultError
-
-    def is_err_and(self, _function: Callable[[E], bool]) -> bool:
-        """Return `True` if the result is `Err` and the value inside of it matches a predicate."""
-        raise ResultError
-
-    def inspect(self, _function: Callable[[O], None]) -> Result[O, E]:
-        """Call a funtion with a reference to the contained value of `Ok` and return self."""
-        raise ResultError
-
-    def inspect_err(self, _function: Callable[[E], None]) -> Result[O, E]:
-        """Call a funtion with a reference to the contained value of `Err` and return self."""
-        raise ResultError
-
-    def ok(self) -> O | None:
-        """Convert self into `O` or `None`, discarding a contained `Err`."""
-        raise ResultError
-
-    def err(self) -> E | None:
-        """Convert self into `E` or `None`, discarding a contained `Ok`."""
-        raise ResultError
-
-    def map[U](self, _function: Callable[[O], U]) -> Result[U, E]:
-        """Map the contained `Ok` value from `O` to `U`, leaving an `Err` value untouched."""
-        raise ResultError
-
-    def map_or[U](self, _default: U, _function: Callable[[O], U]) -> Result[U, E]:
-        """Return the provided default if `Err`, or maps the contained value if `Ok`."""
-        raise ResultError
-
-    def map_err[U](self, _function: Callable[[E], U]) -> Result[O, U]:
-        """Map the contained `Err` value from `E` to `U`, leaving an `Ok` value untouched."""
-        raise ResultError
-
-    def expect(self, _message: str) -> O:
-        """Return the contained `Ok` value, or raise a TypeError with the given message.
-
-        For best practice, the message should be written with the word "should".
-        """
-        raise ResultError
-
-    def unwrap(self) -> O:
-        """Return the contained Ok value, or raise a TypeError.
-
-        Prefer `expect` over `unwrap` for better logging.
-        """
-        raise ResultError
-
-    def expect_err(self, _message: str) -> O:
-        """Return the contained `Err` value, or raise a TypeError with the given message.
-
-        For best practice, the message should be written with the word "should".
-        """
-        raise ResultError
-
-    def unwrap_err(self) -> O:
-        """Return the contained Ok value, or raise a TypeError.
-
-        Prefer `expect_err` over `unwrap_err` for better logging.
-        """
-        raise ResultError
+type Result[T, E] = Ok[T, E] | Err[T, E]
 
 
-class Ok[O, E]:
+class Ok[T, E]:
     """Rust-like Ok type."""
 
     __match_args__ = ("inner",)
 
-    def __init__(self, value: O) -> None:
+    def __init__(self, value: T) -> None:
         """Create an Ok object containing the value."""
         self.inner = value
 
@@ -120,7 +39,7 @@ class Ok[O, E]:
         """Return `True` if the result is `Ok`."""
         return True
 
-    def is_ok_and(self, function: Callable[[O], bool]) -> bool:
+    def is_ok_and(self, function: Callable[[T], bool]) -> bool:
         """Return `True` if the result is `Ok` and the value inside of it matches a predicate."""
         return function(self.inner)
 
@@ -132,50 +51,50 @@ class Ok[O, E]:
         """Return `True` if the result is `Err` and the value inside of it matches a predicate."""
         return False
 
-    def inspect(self, function: Callable[[O], None]) -> Result[O, E]:
+    def inspect(self, function: Callable[[T], None]) -> Ok[T, E]:
         """Call a funtion with a reference to the contained value of `Ok` and return self."""
         function(self.inner)
         return self
 
-    def inspect_err(self, _function: Callable[[E], None]) -> Result[O, E]:
+    def inspect_err(self, _function: Callable[[E], None]) -> Ok[T, E]:
         """Call a funtion with a reference to the contained value of `Err` and return self."""
         return self
 
-    def ok(self) -> O | None:
-        """Convert self into `O` or `None`, discarding a contained `Err`."""
+    def ok(self) -> T | None:
+        """Convert self into `T` or `None`, discarding a contained `Err`."""
         return self.inner
 
     def err(self) -> E | None:
         """Convert self into `E` or `None`, discarding a contained `Ok`."""
         return None
 
-    def map[U](self, function: Callable[[O], U]) -> Result[U, E]:
-        """Map the contained `Ok` value from `O` to `U`, leaving an `Err` value untouched."""
-        return function(self.inner)
+    def map[U](self, function: Callable[[T], U]) -> Ok[U, E]:
+        """Map the contained `Ok` value from `T` to `U`, leaving an `Err` value untouched."""
+        return Ok(function(self.inner))
 
-    def map_or[U](self, _default: U, function: Callable[[O], U]) -> Result[U, E]:
+    def map_or[U](self, _default: U, function: Callable[[T], U]) -> U:
         """Return the provided default if `Err`, or maps the contained value if `Ok`."""
         return function(self.inner)
 
-    def map_err[U](self, _function: Callable[[E], U]) -> Result[O, U]:
+    def map_err[U](self, _function: Callable[[E], U]) -> Ok[T, U]:
         """Map the contained `Err` value from `E` to `U`, leaving an `Ok` value untouched."""
-        return self
+        return Ok(self.inner)
 
-    def expect(self, _message: str) -> O:
+    def expect(self, _message: str) -> T:
         """Return the contained `Ok` value, or raise a TypeError with the given message.
 
         For best practice, the message should be written with the word "should".
         """
         return self.inner
 
-    def unwrap(self) -> O:
+    def unwrap(self) -> T:
         """Return the contained Ok value, or raise a TypeError.
 
         Prefer `expect` over `unwrap` for better logging.
         """
         return self.inner
 
-    def expect_err(self, message: str) -> O:
+    def expect_err(self, message: str) -> E:
         """Return the contained `Err` value, or raise a TypeError with the given message.
 
         For best practice, the message should be written with the word "should".
@@ -183,7 +102,7 @@ class Ok[O, E]:
         msg = f"expect_err: {message}: {self!r}"
         raise TypeError(msg)
 
-    def unwrap_err(self) -> O:
+    def unwrap_err(self) -> E:
         """Return the contained Ok value, or raise a TypeError.
 
         Prefer `expect_err` over `unwrap_err` for better logging.
@@ -192,12 +111,12 @@ class Ok[O, E]:
         raise TypeError(msg)
 
 
-class Err[O, E]:
+class Err[T, E]:
     """Rust-like Err type."""
 
     __match_args__ = ("inner",)
 
-    def __init__(self, value: O) -> None:
+    def __init__(self, value: E) -> None:
         """Create an Ok object containing the value."""
         self.inner = value
 
@@ -209,7 +128,7 @@ class Err[O, E]:
         """Return `True` if the result is `Ok`."""
         return False
 
-    def is_ok_and(self, _function: Callable[[O], bool]) -> bool:
+    def is_ok_and(self, _function: Callable[[T], bool]) -> bool:
         """Return `True` if the result is `Ok` and the value inside of it matches a predicate."""
         return False
 
@@ -221,36 +140,36 @@ class Err[O, E]:
         """Return `True` if the result is `Err` and the value inside of it matches a predicate."""
         return function(self.inner)
 
-    def inspect(self, _function: Callable[[O], None]) -> Result[O, E]:
+    def inspect(self, _function: Callable[[T], None]) -> Err[T, E]:
         """Call a funtion with a reference to the contained value of `Ok` and return self."""
         return self
 
-    def inspect_err(self, function: Callable[[E], None]) -> Result[O, E]:
+    def inspect_err(self, function: Callable[[E], None]) -> Err[T, E]:
         """Call a funtion with a reference to the contained value of `Err` and return self."""
         function(self.inner)
         return self
 
-    def ok(self) -> O | None:
-        """Convert self into `O` or `None`, discarding a contained `Err`."""
+    def ok(self) -> T | None:
+        """Convert self into `T` or `None`, discarding a contained `Err`."""
         return None
 
     def err(self) -> E | None:
         """Convert self into `E` or `None`, discarding a contained `Ok`."""
         return self.inner
 
-    def map[U](self, _function: Callable[[O], U]) -> Result[U, E]:
-        """Map the contained `Ok` value from `O` to `U`, leaving an `Err` value untouched."""
-        return self
+    def map[U](self, _function: Callable[[T], U]) -> Err[U, E]:
+        """Map the contained `Ok` value from `T` to `U`, leaving an `Err` value untouched."""
+        return Err(self.inner)
 
-    def map_or[U](self, default: U, _function: Callable[[O], U]) -> Result[U, E]:
+    def map_or[U](self, default: U, _function: Callable[[T], U]) -> U:
         """Return the provided default if `Err`, or maps the contained value if `Ok`."""
         return default
 
-    def map_err[U](self, function: Callable[[E], U]) -> Result[O, U]:
+    def map_err[U](self, function: Callable[[E], U]) -> Err[T, U]:
         """Map the contained `Err` value from `E` to `U`, leaving an `Ok` value untouched."""
-        return function(self.inner)
+        return Err(function(self.inner))
 
-    def expect(self, message: str) -> O:
+    def expect(self, message: str) -> T:
         """Return the contained `Ok` value, or raise a TypeError with the given message.
 
         For best practice, the message should be written with the word "should".
@@ -258,7 +177,7 @@ class Err[O, E]:
         msg = f"expect: {message}: {self!r}"
         raise TypeError(msg)
 
-    def unwrap(self) -> O:
+    def unwrap(self) -> T:
         """Return the contained Ok value, or raise a TypeError.
 
         Prefer `expect` over `unwrap` for better logging.
@@ -266,14 +185,14 @@ class Err[O, E]:
         msg = f"unwrap: {self!r}"
         raise TypeError(msg)
 
-    def expect_err(self, _message: str) -> O:
+    def expect_err(self, _message: str) -> E:
         """Return the contained `Err` value, or raise a TypeError with the given message.
 
         For best practice, the message should be written with the word "should".
         """
         return self.inner
 
-    def unwrap_err(self) -> O:
+    def unwrap_err(self) -> E:
         """Return the contained Ok value, or raise a TypeError.
 
         Prefer `expect_err` over `unwrap_err` for better logging.

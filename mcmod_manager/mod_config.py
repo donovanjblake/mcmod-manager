@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import TextIO
 
 from mcmod_manager.mod_classes import LoaderKind
+from mcmod_manager.result import Err, Ok, Result
 
 
 @dataclass
@@ -30,13 +31,32 @@ class ProjectVersion:
     """Version information for a project in a config."""
 
     name: str
-    loader: LoaderKind
-    game_version: str
+    loader: LoaderKind | None
+    game_version: str | None
 
 
 def load(fp: TextIO) -> MCModsConfig:
     """Load config from a file."""
     return loads(fp.read())
+
+
+def _load_project(name: str, data: dict[str, str]) -> Result[ProjectVersion, str]:
+    game_version = data.get("game_version")
+    loader = data.get("loader")
+    if not data.get("defaults"):
+        if game_version is None:
+            return Err(f"{name}: Expected game_version")
+        if loader is None:
+            return Err(f"{name}: Expected loader")
+    if loader is not None:
+        loader = LoaderKind(loader)
+    return Ok(
+        ProjectVersion(
+            name=name,
+            game_version=game_version,
+            loader=loader,
+        )
+    )
 
 
 def loads(text: str) -> MCModsConfig:
@@ -53,20 +73,7 @@ def loads(text: str) -> MCModsConfig:
     def load_projects(projects: dict) -> list[ProjectVersion]:
         result = []
         for name, project in projects.items():
-            game_version = None
-            loader = None
-            if project.get("defaults"):
-                game_version = default_game_version
-                loader = default_loader
-            game_version = project.get("game_version") or game_version
-            loader = project.get("loader") or loader
-            result.append(
-                ProjectVersion(
-                    name=name,
-                    game_version=game_version,
-                    loader=LoaderKind(loader),
-                )
-            )
+            result.append(_load_project(name, project).expect("Bad project item"))
         return result
 
     projects = load_projects(data.get("projects", {}))
