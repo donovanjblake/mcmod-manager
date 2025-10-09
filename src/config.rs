@@ -1,6 +1,5 @@
 use crate::error::{Error, Result};
 use std::hash::Hash;
-use toml;
 
 #[derive(Debug)]
 pub struct Config {
@@ -13,13 +12,13 @@ impl Config {
     pub fn loads(text: String) -> Result<Config> {
         let table = text
             .parse::<toml::Table>()
-            .map_err(Error::ConfigParseError)?;
+            .map_err(Error::ConfigParse)?;
         let table = MyTable { inner: &table };
         let defaults = ConfigDefaults::try_from(&table.get_table("defaults")?)?;
         let projects = table.get_table("projects")?.as_projects()?;
         let optional_projects = match table.get_table("optional-projects") {
             Ok(table) => table.as_projects()?,
-            Err(Error::ConfigKeyError(_)) => Default::default(),
+            Err(Error::ConfigKey(_)) => Default::default(),
             Err(e) => return Err(e),
         };
 
@@ -76,12 +75,12 @@ impl OptionConfigProject {
             game_version: self
                 .game_version
                 .as_ref()
-                .unwrap_or_else(|| &defaults.game_version)
+                .unwrap_or(&defaults.game_version)
                 .to_owned(),
             loader: self
                 .loader
                 .as_ref()
-                .unwrap_or_else(|| &defaults.loader)
+                .unwrap_or(&defaults.loader)
                 .to_owned(),
         }
     }
@@ -93,22 +92,22 @@ impl TryFrom<(&String, &MyTable<'_>)> for OptionConfigProject {
         let name = value.0.into();
         let use_defaults = match value.1.get_bool("defaults") {
             Ok(x) => x,
-            Err(Error::ConfigKeyError(_)) => false,
+            Err(Error::ConfigKey(_)) => false,
             Err(e) => return Err(e),
         };
         let game_version = match (value.1.get_str("game_version"), use_defaults) {
             (Ok(x), _) => Some(x.to_string()),
-            (Err(Error::ConfigKeyError(_)), true) => None,
-            (Err(Error::ConfigKeyError(key)), false) => {
-                return Err(Error::ProjectNotResolvedError { project: name, key });
+            (Err(Error::ConfigKey(_)), true) => None,
+            (Err(Error::ConfigKey(key)), false) => {
+                return Err(Error::ProjectNotResolved { project: name, key });
             }
             (Err(e), _) => return Err(e),
         };
         let loader = match (value.1.get_str("loader"), use_defaults) {
             (Ok(x), _) => Some(x.to_string()),
-            (Err(Error::ConfigKeyError(_)), true) => None,
-            (Err(Error::ConfigKeyError(key)), false) => {
-                return Err(Error::ProjectNotResolvedError { project: name, key });
+            (Err(Error::ConfigKey(_)), true) => None,
+            (Err(Error::ConfigKey(key)), false) => {
+                return Err(Error::ProjectNotResolved { project: name, key });
             }
             (Err(e), _) => return Err(e),
         };
@@ -134,7 +133,7 @@ impl<'t> TryFrom<&'t toml::Value> for MyTable<'t> {
     type Error = Error;
     fn try_from(value: &'t toml::Value) -> std::result::Result<Self, Self::Error> {
         Ok(Self {
-            inner: value.as_table().ok_or_else(|| Error::ConfigTypeError {
+            inner: value.as_table().ok_or_else(|| Error::ConfigType {
                 key: Default::default(),
                 message: "Expected a table".into(),
             })?,
@@ -147,7 +146,7 @@ impl<'t> MyTable<'t> {
     fn get(&self, key: &String) -> Result<&'t toml::Value> {
         self.inner
             .get(key)
-            .ok_or_else(|| Error::ConfigKeyError(key.into()))
+            .ok_or_else(|| Error::ConfigKey(key.into()))
     }
 
     /// Get the bool associated with the key
@@ -158,7 +157,7 @@ impl<'t> MyTable<'t> {
         let key = key.to_string();
         self.get(&key)?
             .as_bool()
-            .ok_or_else(|| Error::ConfigTypeError {
+            .ok_or_else(|| Error::ConfigType {
                 key,
                 message: "Expected a bool".into(),
             })
@@ -172,7 +171,7 @@ impl<'t> MyTable<'t> {
         let key = key.to_string();
         self.get(&key)?
             .as_str()
-            .ok_or_else(|| Error::ConfigTypeError {
+            .ok_or_else(|| Error::ConfigType {
                 key,
                 message: "Expected a string".into(),
             })
@@ -187,7 +186,7 @@ impl<'t> MyTable<'t> {
         let inner = self
             .get(&key)?
             .as_table()
-            .ok_or_else(|| Error::ConfigTypeError {
+            .ok_or_else(|| Error::ConfigType {
                 key,
                 message: "Expected a table".into(),
             })?;
@@ -199,7 +198,7 @@ impl<'t> MyTable<'t> {
         let mut result = Vec::<OptionConfigProject>::new();
         for (key, value) in self.inner.iter() {
             let table = MyTable::try_from(value).map_err(|e| match e {
-                Error::ConfigTypeError { message, .. } => Error::ConfigTypeError {
+                Error::ConfigType { message, .. } => Error::ConfigType {
                     key: key.into(),
                     message,
                 },

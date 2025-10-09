@@ -12,7 +12,7 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: Cargo Format
-      run: cargo format --check
+      run: cargo fmt --check
     - name: Cargo Clippy
       run: cargo clippy
   cargo-build:
