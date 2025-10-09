@@ -10,9 +10,7 @@ pub struct Config {
 
 impl Config {
     pub fn loads(text: String) -> Result<Config> {
-        let table = text
-            .parse::<toml::Table>()
-            .map_err(Error::ConfigParse)?;
+        let table = text.parse::<toml::Table>().map_err(Error::ConfigParse)?;
         let table = MyTable { inner: &table };
         let defaults = ConfigDefaults::try_from(&table.get_table("defaults")?)?;
         let projects = table.get_table("projects")?.as_projects()?;
@@ -77,11 +75,7 @@ impl OptionConfigProject {
                 .as_ref()
                 .unwrap_or(&defaults.game_version)
                 .to_owned(),
-            loader: self
-                .loader
-                .as_ref()
-                .unwrap_or(&defaults.loader)
-                .to_owned(),
+            loader: self.loader.as_ref().unwrap_or(&defaults.loader).to_owned(),
         }
     }
 }
@@ -155,12 +149,10 @@ impl<'t> MyTable<'t> {
         S: ToString,
     {
         let key = key.to_string();
-        self.get(&key)?
-            .as_bool()
-            .ok_or_else(|| Error::ConfigType {
-                key,
-                message: "Expected a bool".into(),
-            })
+        self.get(&key)?.as_bool().ok_or_else(|| Error::ConfigType {
+            key,
+            message: "Expected a bool".into(),
+        })
     }
 
     /// Get the str associated with the key
@@ -169,12 +161,10 @@ impl<'t> MyTable<'t> {
         S: ToString,
     {
         let key = key.to_string();
-        self.get(&key)?
-            .as_str()
-            .ok_or_else(|| Error::ConfigType {
-                key,
-                message: "Expected a string".into(),
-            })
+        self.get(&key)?.as_str().ok_or_else(|| Error::ConfigType {
+            key,
+            message: "Expected a string".into(),
+        })
     }
 
     /// Get the table associated with the key

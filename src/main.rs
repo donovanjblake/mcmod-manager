@@ -24,7 +24,9 @@ fn main() {
     let cli = Cli::parse();
     // println!("{cli:?}");
     let config_path = cli.config.unwrap_or_else(|| PathBuf::from("./mcmod.toml"));
-    let mut mod_config = config::Config::loads(std::fs::read_to_string(config_path).expect("Failed to read file")).expect("Failed to parse config");
+    let mut mod_config =
+        config::Config::loads(std::fs::read_to_string(config_path).expect("Failed to read file"))
+            .expect("Failed to parse config");
     cli.game_version
         .inspect(|x| mod_config.defaults.game_version = x.into());
     cli.loader
