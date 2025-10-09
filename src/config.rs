@@ -1,5 +1,4 @@
 use crate::error::{Error, Result};
-use std::hash::Hash;
 
 #[derive(Debug)]
 pub struct Config {
