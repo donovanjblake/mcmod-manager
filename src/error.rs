@@ -3,13 +3,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug)]
 pub enum Error {
     ConfigParse(toml::de::Error),
-    ConfigKey(String),
-    ConfigType { key: String, message: String },
-    ProjectNotResolved { project: String, key: String },
     Request(reqwest::Error),
     ResponseParse(serde_json::Error),
-    ResponseKey(String),
-    ResponseType { key: String, message: String },
     ResponseEmpty { url: String },
 }
 

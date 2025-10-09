@@ -1,8 +1,7 @@
 use crate::error::{Error, Result};
-use reqwest::{blocking as rb, Response};
-use serde::Deserialize;
+use reqwest::blocking as rb;
 
-static LABRINTH_URL: &str = "https://api.modrinth.com";
+const LABRINTH_URL: &str = "https://api.modrinth.com";
 
 pub struct Client {
     client: rb::Client,
@@ -20,8 +19,7 @@ impl Client {
         U: reqwest::IntoUrl,
         P: serde::Serialize + ?Sized,
     {
-        self
-            .client
+        self.client
             .get(url)
             .form(&params)
             .send()
@@ -30,7 +28,12 @@ impl Client {
             .map_err(Error::from)
     }
 
-    pub fn get_project_version<S, T, U>(&self, project: S, game_version: T, loader: U) -> Result<Version>
+    pub fn get_project_version<S, T, U>(
+        &self,
+        project: S,
+        game_version: T,
+        loader: U,
+    ) -> Result<Version>
     where
         S: std::fmt::Display,
         T: std::fmt::Display,
@@ -40,10 +43,18 @@ impl Client {
             ("game_versions", format!("[\"{game_version}\"]")),
             ("loaders", format!("[\"{loader}\"]")),
         ];
-        let response = self.get(format!("{LABRINTH_URL}/v2/project/{project}/version"), &params)?;
+        let response = self.get(
+            format!("{LABRINTH_URL}/v2/project/{project}/version"),
+            &params,
+        )?;
         let url = response.url().as_str().to_owned();
-        let versions = serde_json::from_str::<Vec<Version>>(response.text().map_err(Error::from)?.as_str()).map_err(Error::from)?;
-        let version = versions.into_iter().max_by(|lhs, rhs| lhs.date_published.cmp(&rhs.date_published)).ok_or_else(|| Error::ResponseEmpty { url })?;
+        let versions =
+            serde_json::from_str::<Vec<Version>>(response.text().map_err(Error::from)?.as_str())
+                .map_err(Error::from)?;
+        let version = versions
+            .into_iter()
+            .max_by(|lhs, rhs| lhs.date_published.cmp(&rhs.date_published))
+            .ok_or_else(|| Error::ResponseEmpty { url })?;
         Ok(version)
     }
 }
