@@ -210,3 +210,21 @@ impl<'t> MyTable<'t> {
         Ok(result)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_toml() {
+        let text = "\
+            [defaults]
+            game_version=\"1.21.2\"
+            loader=\"fabric\"
+            [projects]
+            iris.defaults=true
+            faithful-32x={defaults=true,loader=\"minecraft\"}
+            ";
+        Config::loads(text.to_string()).expect("Could not parse toml");
+    }
+}

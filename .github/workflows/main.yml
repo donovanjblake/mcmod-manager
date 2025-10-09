@@ -22,3 +22,5 @@ jobs:
     - uses: actions/checkout@v5
     - name: Cargo Build
       run: cargo build
+    - name: Cargo Test
+      run: cargo test
