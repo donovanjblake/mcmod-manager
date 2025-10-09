@@ -9,7 +9,7 @@ pub struct Config {
 
 impl Config {
     pub fn loads(text: String) -> Result<Config> {
-        let table = text.parse::<toml::Table>().map_err(Error::ConfigParse)?;
+        let table = text.parse::<toml::Table>().map_err(Error::from)?;
         let table = MyTable { inner: &table };
         let defaults = ConfigDefaults::try_from(&table.get_table("defaults")?)?;
         let projects = table.get_table("projects")?.as_projects()?;

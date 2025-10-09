@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
+mod api;
 mod config;
 mod error;
 
@@ -32,4 +33,9 @@ fn main() {
     cli.loader
         .inspect(|x| mod_config.defaults.loader = x.into());
     println!("{mod_config:?}");
+    let client = api::labrinth::Client::new();
+    for project in mod_config.projects() {
+        let version = client.get_project_version(project.name, project.game_version, project.loader).expect("Failed to get project");
+        println!("{version:?}");
+    }
 }
