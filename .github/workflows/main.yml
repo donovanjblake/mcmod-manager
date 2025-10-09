@@ -6,28 +6,21 @@ on:
   pull_request:
 
 jobs:
-  ruff-check:
-    name: Format and Lint
+  cargo-lint:
+    name: Cargo Linting
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v5
-    - uses: actions/setup-python@v6
-      with:
-        python-version: "3.12"
-    - name: Run Ruff
-      run: |
-        pip install .[dev]
-        ruff format mcmod_manager --check
-        ruff check mcmod_manager
-  integration-tests:
-    name: Integration Tests
+    - name: Cargo Format
+      run: cargo fmt --check
+    - name: Cargo Clippy
+      run: cargo clippy
+  cargo-build:
+    name: Cargo Build
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v5
-    - uses: actions/setup-python@v6
-      with:
-        python-version: "3.12"
-    - name: Install and Run
-      run: |
-        pip install .
-        mcmod --config examples/integration_test.toml --download download_test --validate
+    - name: Cargo Build
+      run: cargo build
+    - name: Cargo Test
+      run: cargo test

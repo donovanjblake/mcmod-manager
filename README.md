@@ -1,12 +1,12 @@
 # mcmod-manager
 
-A mod manager for Minecraft written in Python that uses the Modrinth Labrinth API.
+A mod manager for Minecraft written in rust that uses the Modrinth Labrinth API.
 
 <!-- TOC -->
 - [Quick Start](#quick-start)
 - [Arguments](#arguments)
 - [TOML Format](#toml-format)
-    - [Example](#example)
+  - [Example](#example)
 <!-- /TOC -->
 
 ## Quick Start
@@ -43,31 +43,38 @@ Developer use. Validate that all internal enumerations are up to date.
 
 ## TOML Format
 
+`defaults`
+
+`table`: A dictionary of default values for project information.
+
 `defaults.game_version`
 
-A string that represents the target version of Minecraft.
+`string`: A string that represents the target version of Minecraft.
 
 `defaults.loader`
 
-The default mod loader to use.
+`string`: The default mod loader to use.
 
 `projects`
 
-A dictionary of the projects to download. For more details, see `projects-item`.
+`table`: A dictionary of the projects to download.
 
-`projects-item.defaults`
+`projects.[project-name]`
 
-Use the given defaults, e.g. `defaults.game_version`. If other members are specified, they will
-override the defaults.
+`table`: A dictionary of the information for a project.
 
-`projects-item.game_version`
+`projects.[project-name].defaults`
 
-The target Minecraft version for this project. May be needed if a project still works, but does not
-get updated.
+`bool`: For ommited members, use the values from the `defaults` table.
 
-`projects-item.loader`
+`projects.[project-name].game_version`
 
-The mod loader for this project.
+`string`: The target Minecraft version for this project. May be needed if a project still works, but
+does not get updated.
+
+`projects.[project-name].loader`
+
+`string`: The mod loader for this project.
 
 ### Example
 
