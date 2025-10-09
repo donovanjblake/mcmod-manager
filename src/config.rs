@@ -1,74 +1,54 @@
+use std::collections::HashMap;
+
 use crate::error::{Error, Result};
 
-#[derive(Debug)]
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct Config {
     pub defaults: ConfigDefaults,
-    projects: Vec<OptionConfigProject>,
-    optional_projects: Vec<OptionConfigProject>,
+    projects: HashMap<String, OptionConfigProject>,
+    #[serde(default)]
+    optional_projects: HashMap<String, OptionConfigProject>,
 }
 
 impl Config {
-    pub fn loads(text: String) -> Result<Config> {
-        let table = text.parse::<toml::Table>().map_err(Error::ConfigParse)?;
-        let table = MyTable { inner: &table };
-        let defaults = ConfigDefaults::try_from(&table.get_table("defaults")?)?;
-        let projects = table.get_table("projects")?.as_projects()?;
-        let optional_projects = match table.get_table("optional-projects") {
-            Ok(table) => table.as_projects()?,
-            Err(Error::ConfigKey(_)) => Default::default(),
-            Err(e) => return Err(e),
-        };
-
-        Ok(Config {
-            defaults,
-            projects,
-            optional_projects,
-        })
+    pub fn loads(text: &str) -> Result<Config> {
+        toml::from_str::<Self>(text).map_err(Error::from)
     }
 
+    /// Gets the projects, sorted by name
     pub fn projects(&self) -> Vec<ConfigProject> {
         let mut result = Vec::<ConfigProject>::new();
-        for project in &self.projects {
-            result.push(project.resolve(&self.defaults))
+        for (name, project) in &self.projects {
+            result.push(project.resolve(name, &self.defaults))
         }
+        result.sort_by_key(|p| p.name.clone());
         result
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct ConfigDefaults {
     pub game_version: String,
     pub loader: String,
 }
 
-impl TryFrom<&MyTable<'_>> for ConfigDefaults {
-    type Error = Error;
-    fn try_from(table: &MyTable<'_>) -> std::result::Result<Self, Self::Error> {
-        Ok(ConfigDefaults {
-            game_version: table.get_str("game_version")?.into(),
-            loader: table.get_str("loader")?.into(),
-        })
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ConfigProject {
     pub name: String,
     pub game_version: String,
     pub loader: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
 struct OptionConfigProject {
-    pub name: String,
     pub game_version: Option<String>,
     pub loader: Option<String>,
 }
 
 impl OptionConfigProject {
-    pub fn resolve(&self, defaults: &ConfigDefaults) -> ConfigProject {
+    pub fn resolve(&self, name: &String, defaults: &ConfigDefaults) -> ConfigProject {
         ConfigProject {
-            name: self.name.to_owned(),
+            name: name.to_owned(),
             game_version: self
                 .game_version
                 .as_ref()
@@ -79,140 +59,96 @@ impl OptionConfigProject {
     }
 }
 
-impl TryFrom<(&String, &MyTable<'_>)> for OptionConfigProject {
-    type Error = Error;
-    fn try_from(value: (&String, &MyTable<'_>)) -> std::result::Result<Self, Self::Error> {
-        let name = value.0.into();
-        let use_defaults = match value.1.get_bool("defaults") {
-            Ok(x) => x,
-            Err(Error::ConfigKey(_)) => false,
-            Err(e) => return Err(e),
-        };
-        let game_version = match (value.1.get_str("game_version"), use_defaults) {
-            (Ok(x), _) => Some(x.to_string()),
-            (Err(Error::ConfigKey(_)), true) => None,
-            (Err(Error::ConfigKey(key)), false) => {
-                return Err(Error::ProjectNotResolved { project: name, key });
-            }
-            (Err(e), _) => return Err(e),
-        };
-        let loader = match (value.1.get_str("loader"), use_defaults) {
-            (Ok(x), _) => Some(x.to_string()),
-            (Err(Error::ConfigKey(_)), true) => None,
-            (Err(Error::ConfigKey(key)), false) => {
-                return Err(Error::ProjectNotResolved { project: name, key });
-            }
-            (Err(e), _) => return Err(e),
-        };
-        Ok(OptionConfigProject {
-            name,
-            game_version,
-            loader,
-        })
-    }
-}
-
-struct MyTable<'t> {
-    pub inner: &'t toml::Table,
-}
-
-impl<'t> From<&'t toml::Table> for MyTable<'t> {
-    fn from(value: &'t toml::Table) -> Self {
-        Self { inner: value }
-    }
-}
-
-impl<'t> TryFrom<&'t toml::Value> for MyTable<'t> {
-    type Error = Error;
-    fn try_from(value: &'t toml::Value) -> std::result::Result<Self, Self::Error> {
-        Ok(Self {
-            inner: value.as_table().ok_or_else(|| Error::ConfigType {
-                key: Default::default(),
-                message: "Expected a table".into(),
-            })?,
-        })
-    }
-}
-
-impl<'t> MyTable<'t> {
-    /// Get the value associated with the key
-    fn get(&self, key: &String) -> Result<&'t toml::Value> {
-        self.inner
-            .get(key)
-            .ok_or_else(|| Error::ConfigKey(key.into()))
-    }
-
-    /// Get the bool associated with the key
-    pub fn get_bool<S>(&self, key: S) -> Result<bool>
-    where
-        S: ToString,
-    {
-        let key = key.to_string();
-        self.get(&key)?.as_bool().ok_or_else(|| Error::ConfigType {
-            key,
-            message: "Expected a bool".into(),
-        })
-    }
-
-    /// Get the str associated with the key
-    pub fn get_str<S>(&self, key: S) -> Result<&'t str>
-    where
-        S: ToString,
-    {
-        let key = key.to_string();
-        self.get(&key)?.as_str().ok_or_else(|| Error::ConfigType {
-            key,
-            message: "Expected a string".into(),
-        })
-    }
-
-    /// Get the table associated with the key
-    pub fn get_table<S>(&self, key: S) -> Result<Self>
-    where
-        S: ToString,
-    {
-        let key = key.to_string();
-        let inner = self
-            .get(&key)?
-            .as_table()
-            .ok_or_else(|| Error::ConfigType {
-                key,
-                message: "Expected a table".into(),
-            })?;
-        Ok(Self { inner })
-    }
-
-    /// Try to get the table as a list of projects
-    pub fn as_projects(&self) -> Result<Vec<OptionConfigProject>> {
-        let mut result = Vec::<OptionConfigProject>::new();
-        for (key, value) in self.inner.iter() {
-            let table = MyTable::try_from(value).map_err(|e| match e {
-                Error::ConfigType { message, .. } => Error::ConfigType {
-                    key: key.into(),
-                    message,
-                },
-                _ => e,
-            })?;
-            result.push(OptionConfigProject::try_from((key, &table))?)
-        }
-        Ok(result)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    const STANDARD: &str = "\
+        [defaults]
+        game_version=\"1.21.2\"
+        loader=\"fabric\"
+        [projects]
+        iris.defaults=true
+        faithful-32x={defaults=true,loader=\"minecraft\"}
+        ";
+
+    const OPTIONAL: &str = "\
+        [defaults]
+        game_version=\"1.21.2\"
+        loader=\"fabric\"
+        [projects]
+        iris.defaults=true
+        faithful-32x={defaults=true,loader=\"minecraft\"}
+        [optional-projects]
+        stellaris.defaults=true
+        ";
+
     #[test]
     fn test_parse_toml() {
-        let text = "\
-            [defaults]
-            game_version=\"1.21.2\"
-            loader=\"fabric\"
-            [projects]
-            iris.defaults=true
-            faithful-32x={defaults=true,loader=\"minecraft\"}
-            ";
-        Config::loads(text.to_string()).expect("Could not parse toml");
+        Config::loads(STANDARD).expect("Could not parse toml");
+    }
+
+    #[test]
+    fn test_parse_optional() {
+        Config::loads(OPTIONAL).expect("Could not parse toml");
+    }
+
+    #[test]
+    fn test_set_game_version() {
+        let mut config = Config::loads(STANDARD).expect("Could not parse toml");
+        config.defaults.game_version = "1.21.4".into();
+        let projects = config.projects();
+        let expected_projects = Vec::from([
+            ConfigProject {
+                name: "faithful-32x".into(),
+                game_version: "1.21.4".into(),
+                loader: "minecraft".into(),
+            },
+            ConfigProject {
+                name: "iris".into(),
+                game_version: "1.21.4".into(),
+                loader: "fabric".into(),
+            },
+        ]);
+        assert_eq!(projects, expected_projects);
+    }
+
+    #[test]
+    fn test_set_loader() {
+        let mut config = Config::loads(STANDARD).expect("Could not parse toml");
+        config.defaults.loader = "neoforge".into();
+        let projects = config.projects();
+        let expected_projects = Vec::from([
+            ConfigProject {
+                name: "faithful-32x".into(),
+                game_version: "1.21.2".into(),
+                loader: "minecraft".into(),
+            },
+            ConfigProject {
+                name: "iris".into(),
+                game_version: "1.21.2".into(),
+                loader: "neoforge".into(),
+            },
+        ]);
+        assert_eq!(projects, expected_projects);
+    }
+
+    #[test]
+    fn test_get_projects() {
+        let config = Config::loads(STANDARD).expect("Could not parse toml");
+        let projects = config.projects();
+        let expected_projects = Vec::from([
+            ConfigProject {
+                name: "faithful-32x".into(),
+                game_version: "1.21.2".into(),
+                loader: "minecraft".into(),
+            },
+            ConfigProject {
+                name: "iris".into(),
+                game_version: "1.21.2".into(),
+                loader: "fabric".into(),
+            },
+        ]);
+        assert_eq!(projects, expected_projects);
     }
 }

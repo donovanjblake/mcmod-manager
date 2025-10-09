@@ -28,7 +28,7 @@ A mod manager for Minecraft written in rust that uses the Modrinth Labrinth API.
 
 ## Arguments
 
-`--config CONFIG`
+`[CONFIG]`
 
 Give a path to a mod list toml file to load. If omitted, try to load from `./mcmod.toml`.
 
