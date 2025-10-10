@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use crate::error::{Error, Result};
 
@@ -12,7 +12,14 @@ pub struct Config {
 
 impl Config {
     pub fn loads(text: &str) -> Result<Config> {
-        toml::from_str::<Self>(text).map_err(Error::from)
+        let result = toml::from_str::<Self>(text).map_err(Error::from)?;
+        if !result.defaults.dot_minecraft.is_dir() {
+            panic!(
+                "{:?}: directory does not exist",
+                result.defaults.dot_minecraft
+            );
+        }
+        Ok(result)
     }
 
     /// Gets the projects, sorted by name
@@ -26,10 +33,37 @@ impl Config {
     }
 }
 
+fn default_temp() -> PathBuf {
+    if cfg!(windows) {
+        let tempdir = std::env::var("TEMP").expect("Could determine Temp path");
+        PathBuf::from(format!("{tempdir}\\mcmod"))
+    } else {
+        PathBuf::from("/tmp/mcmod")
+    }
+}
+
+fn default_dot_minecraft() -> PathBuf {
+    if cfg!(windows) {
+        let appdata = std::env::var("APPDATA").expect("Could determine AppData path");
+        PathBuf::from(format!("{appdata}\\.minecraft"))
+    } else {
+        let home = std::env::home_dir().expect("Could not determine home path");
+        home.join(".minecraft")
+    }
+}
+
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct ConfigDefaults {
+    /// The target Minecraft version
     pub game_version: String,
+    /// The default mod loader
     pub loader: String,
+    /// The path to the .minecraft directory
+    #[serde(default = "default_dot_minecraft")]
+    pub dot_minecraft: PathBuf,
+    /// The path to the temp directory to use
+    #[serde(default = "default_temp")]
+    pub temp: PathBuf,
 }
 
 #[derive(Debug, PartialEq, Eq)]

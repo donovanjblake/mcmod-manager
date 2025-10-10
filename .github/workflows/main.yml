@@ -24,3 +24,7 @@ jobs:
       run: cargo build
     - name: Cargo Test
       run: cargo test
+    - name: Integration Tests
+      run: |
+        mkdir ~/.minecraft
+        cargo run -- examples/integration_test.toml -d downloads -i

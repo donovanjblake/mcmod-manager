@@ -3,15 +3,16 @@
 A mod manager for Minecraft written in rust that uses the Modrinth Labrinth API.
 
 <!-- TOC -->
+
 - [Quick Start](#quick-start)
 - [Arguments](#arguments)
 - [TOML Format](#toml-format)
   - [Example](#example)
-<!-- /TOC -->
+  <!-- /TOC -->
 
 ## Quick Start
 
-- Create a mcmod.toml, example:
+- Create a mcmod.toml in the same directory as the executable. Example:
 
   ```toml
   [defaults]
@@ -22,9 +23,7 @@ A mod manager for Minecraft written in rust that uses the Modrinth Labrinth API.
   sodium.defaults = true
   faithful-x64 = {defaults = true, loader = "minecraft"}
   ```
-
-- Install this project with your choice of pip, uv, etc
-- Run `mcmod --config mcmod.toml --download mods-1.21.5`
+- Run `mcmod --install`
 
 ## Arguments
 
@@ -36,6 +35,11 @@ Give a path to a mod list toml file to load. If omitted, try to load from `./mcm
 
 Give a path to download the found mods to. If the folder does not exist, create it. Does not delete
 items in the folder, but will overwrite them.
+
+`--install`
+
+Download the project files into their appropriate directories under the `.minecraft` folder.
+**NOTE:** This does not work with datapacks, as they have to be installed for each world.
 
 `--validate`
 
@@ -55,6 +59,14 @@ Developer use. Validate that all internal enumerations are up to date.
 
 `string`: The default mod loader to use.
 
+`defaults.dot_minecraft`
+
+`string`: Optional. The path to the `.minecraft` directory.
+
+`defaults.temp`
+
+`string`: Optional. The path to the temporary directory to use for files.
+
 `projects`
 
 `table`: A dictionary of the projects to download.
@@ -70,11 +82,12 @@ Developer use. Validate that all internal enumerations are up to date.
 `projects.[project-name].game_version`
 
 `string`: The target Minecraft version for this project. May be needed if a project still works, but
-does not get updated.
+does not get updated. If omitted, use value from `defaults.game_version`.
 
 `projects.[project-name].loader`
 
-`string`: The mod loader for this project.
+`string`: The mod loader for this project. If omitted, use value from `defaults.loader`. For
+resource packs, use `minecraft`.
 
 ### Example
 
@@ -86,7 +99,6 @@ loader = "fabric"
 [projects]
 sodium.defaults = true
 faithful-32x = {defaults = true, loader = "minecraft"}
-
 ```
 
 In this example, the target version of minecraft is 1.21.5, and the preferred mod loader is Fabric.

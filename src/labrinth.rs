@@ -40,6 +40,7 @@ impl Client {
             .map_err(Error::from)
     }
 
+    /// Get the latest version of a project for the target Minecraft version and mod loader
     pub fn get_project_version<S, T, U>(
         &self,
         project: S,
@@ -92,7 +93,7 @@ impl Client {
     }
 }
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, Debug, PartialEq, Eq)]
 pub struct ProjectVersion {
     // #[serde(rename = "id")]
     // pub version_id: String,
@@ -100,10 +101,41 @@ pub struct ProjectVersion {
     pub name: String,
     pub files: Vec<VersionFile>,
     pub date_published: String,
+    pub loaders: Vec<String>,
+    pub game_versions: Vec<String>,
 }
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, Debug, PartialEq, Eq)]
 pub struct VersionFile {
     pub url: String,
     pub filename: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_project_version() {
+        let client = Client::new();
+        let game_version = "1.21.2".to_string();
+        let loader = "minecraft".to_string();
+        let version = client
+            .get_project_version("faithful-32x", &game_version, &loader)
+            .expect("Client should get the latest project version");
+        if !version.game_versions.contains(&game_version) || !version.loaders.contains(&loader) {
+            panic!("Client should get the latest project version for a specific target {version:?}")
+        }
+    }
+
+    #[test]
+    fn test_download_files() {
+        let client = Client::new();
+        let version = client
+            .get_project_version("iris", "1.21.2", "fabric")
+            .expect("Client should be able to get a latest project version");
+        let _files = client
+            .download_version_files(&version)
+            .expect("Client should be able to download files");
+    }
 }

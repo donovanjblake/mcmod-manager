@@ -3,6 +3,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug)]
 pub enum Error {
     #[allow(dead_code)]
+    IO(std::io::Error),
+    #[allow(dead_code)]
     TomlParse(toml::de::Error),
     #[allow(dead_code)]
     JsonParse(serde_json::Error),
@@ -10,6 +12,12 @@ pub enum Error {
     Request(reqwest::Error),
     #[allow(dead_code)]
     ResponseEmpty { url: String },
+}
+
+impl From<std::io::Error> for Error {
+    fn from(value: std::io::Error) -> Self {
+        Error::IO(value)
+    }
 }
 
 impl From<toml::de::Error> for Error {
