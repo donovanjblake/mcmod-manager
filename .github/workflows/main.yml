@@ -22,9 +22,11 @@ jobs:
     - uses: actions/checkout@v5
     - name: Cargo Build
       run: cargo build
+    - name: Setup Directories
+      run: |
+        mkdir ~/.minecraft
     - name: Cargo Test
       run: cargo test
     - name: Integration Tests
       run: |
-        mkdir ~/.minecraft
         cargo run -- examples/integration_test.toml -d downloads -i
