@@ -54,7 +54,7 @@ fn load_config(cli: &Cli) -> Result<config::Config> {
 }
 
 /// Get the versions of projects from the server. If any are not found, return Err
-fn collect_versions(
+fn collect_required_versions(
     client: &labrinth::Client,
     mcmod: &config::Config,
 ) -> Result<Vec<labrinth::ProjectVersion>> {
@@ -100,6 +100,16 @@ fn collect_optional_versions(
     versions
 }
 
+/// Get the versions of projects from the server.
+fn collect_versions(
+    client: &labrinth::Client,
+    mcmod: &config::Config,
+) -> Result<Vec<labrinth::ProjectVersion>> {
+    let mut versions = collect_required_versions(client, mcmod)?;
+    versions.append(&mut collect_optional_versions(client, mcmod));
+    Ok(versions)
+}
+
 /// Initialize the temp directory to be empty
 fn init_temp(tmp: &PathBuf) -> std::io::Result<PathBuf> {
     // TODO: Make hashed temp paths to prevent collisions with other instances
@@ -107,15 +117,17 @@ fn init_temp(tmp: &PathBuf) -> std::io::Result<PathBuf> {
     Ok(tmp.clone())
 }
 
-/// Download the files from the given versions into the temp directory
+/// Download the files from the given versions into the given directory, deleting any previous files
+/// in the directory.
 fn download_files(
     client: &labrinth::Client,
     versions: &Vec<labrinth::ProjectVersion>,
     path: &Path,
 ) -> Result<()> {
+    new_empty_dir(&path.to_path_buf()).expect("Failure to empty temp sub-directory");
     for dir in ["mods", "resourcepacks", "datapacks"] {
         let dir = path.join(dir);
-        new_empty_dir(&dir).expect("Failure to empty .minecraft sub-directory");
+        new_empty_dir(&dir).expect("Failure to empty temp sub-directory");
     }
     for version in versions {
         println!("Downloading {}", version.name);
@@ -174,12 +186,22 @@ fn new_empty_dir(dir: &PathBuf) -> std::io::Result<()> {
     fs::create_dir(dir)
 }
 
+/// Install the files from src into dot_minecraft, deleting any previous files in datapacks, mods,
+/// and resourcepacks.
+fn install_files(src: &PathBuf, dot_minecraft: &PathBuf) -> std::io::Result<()> {
+    for dir in ["mods", "resourcepacks", "datapacks"] {
+        let dir = dot_minecraft.join(dir);
+        new_empty_dir(&dir)?;
+    } 
+    copy_dir_all(src, dot_minecraft)?;
+    Ok(())
+}
+
 fn main() {
     let cli = Cli::parse();
     let mcmod = load_config(&cli).expect("Failure to load config");
     let client = labrinth::Client::new();
-    let mut versions = collect_versions(&client, &mcmod).expect("Failure to collect versions");
-    versions.append(&mut collect_optional_versions(&client, &mcmod));
+    let versions = collect_versions(&client, &mcmod).expect("Failure to collect versions");
 
     let total = mcmod.projects().len() + mcmod.optional_projects().len();
     let collected = versions.len();
@@ -203,12 +225,7 @@ fn main() {
 
     if cli.install {
         println!("Installing to {:?}", mcmod.paths.dot_minecraft);
-        for dir in ["mods", "resourcepacks", "datapacks"] {
-            let dir = mcmod.paths.dot_minecraft.join(dir);
-            new_empty_dir(&dir).expect("Failure to empty .minecraft sub-directory");
-        }
-        copy_dir_all(&temp_path, &mcmod.paths.dot_minecraft)
-            .expect("Failure to copy install files to .minecraft directory");
+        install_files(&temp_path, &mcmod.paths.dot_minecraft).expect("Failure to install files");
     }
 }
 
@@ -335,5 +352,40 @@ mod tests {
     fn test_cli_parse_require_download_value_short() {
         Cli::try_parse_from(["exe", "-d"])
             .expect_err("Cli shall require a value if the -d option is specified");
+    }
+
+    fn load_test_config() -> config::Config {
+        config::Config::loads(
+            fs::read_to_string("examples/integration_test.toml")
+                .expect("Failure to read test config")
+                .as_str(),
+        )
+        .expect("Failure to parse test config")
+    }
+
+    fn create_test_paths() {
+        let path = PathBuf::from(".test/.minecraft");
+        if !path.exists() {
+            fs::create_dir_all(path).expect("Failure to create test path")
+        }
+    }
+
+    fn check_children_count(path: &PathBuf, count: usize) {
+        assert_eq!(path.read_dir().expect("Failure to read entries").count(), count, "Path count mismatch for {path:?}");
+    }
+
+    #[test]
+    fn test_action_install() {
+        create_test_paths();
+        let mcmod = load_test_config();
+        let client = labrinth::Client::new();
+        let versions = collect_versions(&client, &mcmod).expect("Failure to collect versions");
+        let temp = init_temp(&mcmod.paths.temp).expect("Failed to initialize temp path");
+        download_files(&client, &versions, &temp).expect("Failure to download files");
+        let minecraft = &mcmod.paths.dot_minecraft;
+        install_files(&temp, &minecraft).expect("Failure to install files");
+        check_children_count(&minecraft.join("datapacks"), 1);
+        check_children_count(&minecraft.join("mods"), 2);
+        check_children_count(&minecraft.join("resourcepacks"), 1);
     }
 }
