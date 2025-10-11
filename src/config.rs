@@ -155,24 +155,34 @@ impl OptionConfigProject {
 mod tests {
     use super::*;
 
-    const STANDARD: &str = "
-        [defaults]
-        game_version=\"1.21.2\"
-        loader=\"fabric\"
-        [projects]
-        iris.defaults=true
-        faithful-32x={defaults=true,loader=\"minecraft\"}
-        [optional-projects]
-        camps_castles_carriages.defaults = true
-        lithium.defaults = true
-        ";
+    fn load_test_config() -> Config {
+        Config::loads(
+            std::fs::read_to_string("examples/integration_test.toml")
+                .expect("Failure to read test config")
+                .as_str(),
+        )
+        .expect("Config shall be able to parse a toml.")
+    }
+
+    fn create_test_paths() {
+        let path = PathBuf::from(".test/.minecraft");
+        if !path.exists() {
+            std::fs::create_dir_all(path).expect("Failure to create test path")
+        }
+    }
 
     #[test]
     fn test_set_game_version() {
-        let mut config = Config::loads(STANDARD).expect("Config shall be able to parse a toml.");
+        create_test_paths();
+        let mut config = load_test_config();
         config.defaults.game_version = "1.21.4".into();
         let projects = config.projects();
         let expected_projects = Vec::from([
+            ConfigProject {
+                name: "blazeandcaves-advancements-pack".into(),
+                game_version: "1.21.4".into(),
+                loader: "datapack".into(),
+            },
             ConfigProject {
                 name: "faithful-32x".into(),
                 game_version: "1.21.4".into(),
@@ -192,18 +202,24 @@ mod tests {
 
     #[test]
     fn test_set_loader() {
-        let mut config = Config::loads(STANDARD).expect("Config shall be able to parse a toml.");
+        create_test_paths();
+        let mut config = load_test_config();
         config.defaults.loader = "neoforge".into();
         let projects = config.projects();
         let expected_projects = Vec::from([
             ConfigProject {
+                name: "blazeandcaves-advancements-pack".into(),
+                game_version: "1.21.5".into(),
+                loader: "datapack".into(),
+            },
+            ConfigProject {
                 name: "faithful-32x".into(),
-                game_version: "1.21.2".into(),
+                game_version: "1.21.5".into(),
                 loader: "minecraft".into(),
             },
             ConfigProject {
                 name: "iris".into(),
-                game_version: "1.21.2".into(),
+                game_version: "1.21.5".into(),
                 loader: "neoforge".into(),
             },
         ]);
@@ -215,17 +231,23 @@ mod tests {
 
     #[test]
     fn test_get_projects() {
-        let config = Config::loads(STANDARD).expect("Config shall be able to parse a toml.");
+        create_test_paths();
+        let config = load_test_config();
         let projects = config.projects();
         let expected_projects = Vec::from([
             ConfigProject {
+                name: "blazeandcaves-advancements-pack".into(),
+                game_version: "1.21.5".into(),
+                loader: "datapack".into(),
+            },
+            ConfigProject {
                 name: "faithful-32x".into(),
-                game_version: "1.21.2".into(),
+                game_version: "1.21.5".into(),
                 loader: "minecraft".into(),
             },
             ConfigProject {
                 name: "iris".into(),
-                game_version: "1.21.2".into(),
+                game_version: "1.21.5".into(),
                 loader: "fabric".into(),
             },
         ]);
@@ -237,17 +259,18 @@ mod tests {
 
     #[test]
     fn test_get_optional_projects() {
-        let config = Config::loads(STANDARD).expect("Config shall be able to parse a toml.");
+        create_test_paths();
+        let config = load_test_config();
         let projects = config.optional_projects();
         let expected_projects = Vec::from([
             ConfigProject {
                 name: "camps_castles_carriages".into(),
-                game_version: "1.21.2".into(),
+                game_version: "1.21.5".into(),
                 loader: "fabric".into(),
             },
             ConfigProject {
                 name: "lithium".into(),
-                game_version: "1.21.2".into(),
+                game_version: "1.21.5".into(),
                 loader: "fabric".into(),
             },
         ]);
