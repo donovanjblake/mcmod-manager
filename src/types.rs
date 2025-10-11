@@ -1,6 +1,6 @@
-use crate::error::Error;
-use clap;
+use crate::error::{Error, Result};
 
+/// Enumeration of mod loader options
 #[derive(
     serde::Deserialize,
     serde::Serialize,
@@ -48,6 +48,7 @@ pub enum ModLoader {
     LegacyFabric,
     #[strum(to_string = "liteloader")]
     LiteLoader,
+    #[allow(clippy::enum_variant_names)]
     #[strum(to_string = "modloader")]
     ModLoader,
     #[strum(to_string = "nilloader")]
@@ -72,4 +73,59 @@ pub enum ModLoader {
     Velocity,
     #[strum(to_string = "waterfall")]
     Waterfall,
+}
+
+/// Minecraft version structure
+#[derive(serde::Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
+#[serde(try_from = "&str")]
+pub struct MinecraftVersion {
+    /// Major version number
+    major: u8,
+    /// Minor version number
+    minor: u8,
+    /// Patch version number
+    patch: Option<u8>,
+}
+
+impl serde::Serialize for MinecraftVersion {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(
+            format!(
+                "{}.{}.{}",
+                self.major,
+                self.minor,
+                self.patch
+                    .map_or_else(|| String::from("x"), |x| x.to_string())
+            )
+            .as_str(),
+        )
+    }
+}
+
+impl TryFrom<&str> for MinecraftVersion {
+    type Error = Error;
+    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+        let parts: Vec<_> = value.split(".").collect();
+        if parts.len() != 3 {
+            return Err(Error::InvalidMinecraftVersion(value.to_string()));
+        }
+        let parse_u8 = |s: &str| -> Result<u8> {
+            s.parse::<u8>()
+                .map_err(|_| Error::InvalidMinecraftVersion(value.to_string()))
+        };
+        let (major, minor) = (parse_u8(parts[0])?, parse_u8(parts[1])?);
+        let patch = if parts[2].to_ascii_lowercase() == String::from('x') {
+            None
+        } else {
+            Some(parse_u8(parts[2])?)
+        };
+        Ok(MinecraftVersion {
+            major,
+            minor,
+            patch,
+        })
+    }
 }

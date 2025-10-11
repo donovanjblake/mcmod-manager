@@ -1,6 +1,6 @@
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug)]
+#[derive(Debug, strum::Display)]
 pub enum Error {
     #[allow(dead_code)]
     IO(std::io::Error),
@@ -14,6 +14,8 @@ pub enum Error {
     ResponseEmpty { url: String },
     #[allow(dead_code)]
     InvalidLoader(String),
+    #[allow(dead_code)]
+    InvalidMinecraftVersion(String),
 }
 
 impl Error {
