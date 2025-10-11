@@ -6,9 +6,12 @@ use std::{
 use clap::Parser;
 use error::{Error, Result};
 
+use crate::types::ModLoader;
+
 mod config;
 mod error;
 mod labrinth;
+mod types;
 
 /// The options passed to the program through the command line interface
 #[derive(Parser, Debug)]
@@ -22,7 +25,7 @@ struct Cli {
 
     /// Override the default mod loader in the config
     #[arg(long, short)]
-    loader: Option<String>,
+    loader: Option<ModLoader>,
 
     /// Download the files to the given directory
     #[arg(long, short)]
@@ -48,8 +51,7 @@ fn load_config(cli: &Cli) -> Result<config::Config> {
         .as_ref()
         .inspect(|x| mcmod.defaults.game_version = x.to_string());
     cli.loader
-        .as_ref()
-        .inspect(|x| mcmod.defaults.loader = x.to_string());
+        .inspect(|x| mcmod.defaults.loader = *x);
     Ok(mcmod)
 }
 
@@ -132,9 +134,9 @@ fn download_files(
     for version in versions {
         println!("Downloading {}", version.name);
         let files = client.download_version_files(version)?;
-        let folder = match version.loaders.first().map(|x| x.as_str()) {
-            Some("minecraft") => "resourcepacks",
-            Some("datapack") => "datapacks",
+        let folder = match version.loaders.first() {
+            Some(ModLoader::Minecraft) => "resourcepacks",
+            Some(ModLoader::Datapack) => "datapacks",
             _ => "mods",
         };
         for (info, bytes) in files {
@@ -270,7 +272,7 @@ mod tests {
         );
         assert_eq!(
             cli.loader,
-            Some(String::from("minecraft")),
+            Some(ModLoader::Minecraft),
             "Cli shall read the input mod loader"
         );
         assert_eq!(
@@ -307,7 +309,7 @@ mod tests {
         );
         assert_eq!(
             cli.loader,
-            Some(String::from("minecraft")),
+            Some(ModLoader::Minecraft),
             "Cli shall read the input mod loader"
         );
         assert_eq!(

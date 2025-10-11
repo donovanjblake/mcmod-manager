@@ -12,6 +12,8 @@ pub enum Error {
     Request(reqwest::Error),
     #[allow(dead_code)]
     ResponseEmpty { url: String },
+    #[allow(dead_code)]
+    InvalidLoader(String),
 }
 
 impl From<std::io::Error> for Error {
