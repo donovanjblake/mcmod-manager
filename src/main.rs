@@ -4,7 +4,7 @@ use std::{
 };
 
 use clap::Parser;
-use error::{Error, Result};
+use error::Result;
 
 use crate::types::ModLoader;
 
@@ -34,6 +34,10 @@ struct Cli {
     /// Install mods, resource packs, etc into .minecraft directory
     #[arg(long, short)]
     install: bool,
+
+    /// Validate internal data types
+    #[arg(long)]
+    validate: bool,
 }
 
 /// Load a config, overriding values as specified in cli
@@ -42,16 +46,11 @@ fn load_config(cli: &Cli) -> Result<config::Config> {
         .config
         .to_owned()
         .unwrap_or_else(|| PathBuf::from("./mcmod.toml"));
-    let mut mcmod = config::Config::loads(
-        std::fs::read_to_string(config_path)
-            .map_err(Error::from)?
-            .as_str(),
-    )?;
+    let mut mcmod = config::Config::loads(std::fs::read_to_string(config_path)?.as_str())?;
     cli.game_version
         .as_ref()
         .inspect(|x| mcmod.defaults.game_version = x.to_string());
-    cli.loader
-        .inspect(|x| mcmod.defaults.loader = *x);
+    cli.loader.inspect(|x| mcmod.defaults.loader = *x);
     Ok(mcmod)
 }
 
@@ -203,6 +202,13 @@ fn main() {
     let cli = Cli::parse();
     let mcmod = load_config(&cli).expect("Failure to load config");
     let client = labrinth::Client::new();
+    if cli.validate {
+        let errors = client.validate_enums().expect("Failed to compare data");
+        if !errors.is_empty() {
+            println!("{errors:?}")
+        }
+    }
+
     let versions = collect_versions(&client, &mcmod).expect("Failure to collect versions");
 
     let total = mcmod.projects().len() + mcmod.optional_projects().len();

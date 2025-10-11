@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::PathBuf};
 
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::types::ModLoader;
 
 /// Configuration containing paths and projects to use
@@ -24,7 +24,7 @@ pub struct Config {
 impl Config {
     /// Load the config from TOML text
     pub fn loads(text: &str) -> Result<Config> {
-        let result = toml::from_str::<Self>(text).map_err(Error::from)?;
+        let result = toml::from_str::<Self>(text)?;
         if !result.paths.dot_minecraft.is_dir() {
             panic!("{:?}: directory does not exist", result.paths.dot_minecraft);
         }

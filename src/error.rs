@@ -16,6 +16,12 @@ pub enum Error {
     InvalidLoader(String),
 }
 
+impl Error {
+    pub fn invalid_loader(s: &str) -> Self {
+        Error::InvalidLoader(s.to_string())
+    }
+}
+
 impl From<std::io::Error> for Error {
     fn from(value: std::io::Error) -> Self {
         Error::IO(value)

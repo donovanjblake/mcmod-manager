@@ -19,12 +19,7 @@ impl Client {
     where
         U: reqwest::IntoUrl,
     {
-        self.client
-            .get(url)
-            .send()
-            .map_err(Error::from)?
-            .error_for_status()
-            .map_err(Error::from)
+        Ok(self.client.get(url).send()?.error_for_status()?)
     }
 
     fn get_form<U, P>(&self, url: U, params: &P) -> Result<rb::Response>
@@ -32,13 +27,12 @@ impl Client {
         U: reqwest::IntoUrl + Clone,
         P: serde::Serialize + ?Sized,
     {
-        self.client
+        Ok(self
+            .client
             .get(url)
             .query(&params)
-            .send()
-            .map_err(Error::from)?
-            .error_for_status()
-            .map_err(Error::from)
+            .send()?
+            .error_for_status()?)
     }
 
     /// Get the latest version of a project for the target Minecraft version and mod loader
@@ -54,17 +48,14 @@ impl Client {
     {
         let params = [
             ("game_versions", format!("[\"{game_version}\"]")),
-            ("loaders", format!("[\"{}\"]", loader.to_string())),
+            ("loaders", format!("[\"{loader}\"]")),
         ];
         let response = self.get_form(
             format!("{LABRINTH_URL}/v2/project/{project}/version"),
             &params,
         )?;
         let url = response.url().as_str().to_owned();
-        let versions = serde_json::from_str::<Vec<ProjectVersion>>(
-            response.text().map_err(Error::from)?.as_str(),
-        )
-        .map_err(Error::from)?;
+        let versions = serde_json::from_str::<Vec<ProjectVersion>>(response.text()?.as_str())?;
         let version = versions
             .into_iter()
             .max_by(|lhs, rhs| lhs.date_published.cmp(&rhs.date_published))
@@ -74,10 +65,10 @@ impl Client {
 
     /// Download a single file
     pub fn download_file(&self, version_file: &VersionFile) -> Result<Vec<u8>> {
-        self.get(version_file.url.clone())?
+        Ok(self
+            .get(version_file.url.clone())?
             .bytes()
-            .map(|x| x.into())
-            .map_err(Error::from)
+            .map(|x| x.into())?)
     }
 
     /// Download the files of a version into a list of tuples of the file info and the bytes
@@ -88,6 +79,19 @@ impl Client {
         let mut result = Vec::<(&'pv VersionFile, Vec<u8>)>::new();
         for version_file in &version.files {
             result.push((version_file, self.download_file(version_file)?))
+        }
+        Ok(result)
+    }
+
+    /// Validate all internal enumerations are up to date
+    pub fn validate_enums(&self) -> Result<Vec<Error>> {
+        let mut result = Vec::<Error>::new();
+        let repsonse = self.get(format!("{LABRINTH_URL}/v2/tag/loader"))?;
+        let values = serde_json::from_str::<Vec<LoaderInfo>>(repsonse.text()?.as_str())?;
+        for v in values {
+            if let Err(e) = ModLoader::try_from(v.name.as_str()) {
+                result.push(e)
+            }
         }
         Ok(result)
     }
@@ -109,6 +113,11 @@ pub struct ProjectVersion {
 pub struct VersionFile {
     pub url: String,
     pub filename: String,
+}
+
+#[derive(serde::Deserialize, Debug)]
+struct LoaderInfo {
+    pub name: String,
 }
 
 #[cfg(test)]
@@ -142,5 +151,13 @@ mod tests {
         let _files = client
             .download_version_files(&version)
             .expect("Client should be able to download files");
+    }
+
+    #[test]
+    fn test_validate_data() {
+        let client = Client::new();
+        client
+            .validate_enums()
+            .expect("Client shall be able to get and compare data");
     }
 }
