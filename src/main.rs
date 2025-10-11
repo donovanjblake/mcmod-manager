@@ -16,11 +16,11 @@ struct Cli {
     config: Option<PathBuf>,
 
     /// Override the default game version from the config
-    #[arg(long)]
+    #[arg(long, short = 'v')]
     game_version: Option<String>,
 
     /// Override the default loader from the config
-    #[arg(long)]
+    #[arg(long, short)]
     loader: Option<String>,
 
     /// Download the files to the given directory
@@ -189,5 +189,99 @@ fn main() {
         }
         copy_dir_all(&temp_path, &mcmod.paths.dot_minecraft)
             .expect("Failure to copy install files to .minecraft directory");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cli_parse_empty() {
+        let cli =
+            Cli::try_parse_from(["exe"]).expect("Cli shall be able to run with zero arguments");
+        assert_eq!(cli.config, None);
+        assert_eq!(cli.game_version, None);
+        assert_eq!(cli.loader, None);
+        assert_eq!(cli.download, None);
+        assert_eq!(cli.install, false);
+    }
+
+    #[test]
+    fn test_cli_parse_all() {
+        let cli = Cli::try_parse_from([
+            "exe",
+            "config",
+            "--game-version",
+            "1.23.4",
+            "--loader",
+            "minecraft",
+            "--download",
+            "dir",
+            "--install",
+        ])
+        .expect("Cli shall accept every long option");
+        assert_eq!(cli.config, Some(PathBuf::from("config")));
+        assert_eq!(cli.game_version, Some(String::from("1.23.4")));
+        assert_eq!(cli.loader, Some(String::from("minecraft")));
+        assert_eq!(cli.download, Some(PathBuf::from("dir")));
+        assert_eq!(cli.install, true);
+    }
+
+    #[test]
+    fn test_cli_parse_short() {
+        let cli = Cli::try_parse_from([
+            "exe",
+            "config",
+            "-v",
+            "1.23.4",
+            "-l",
+            "minecraft",
+            "-d",
+            "dir",
+            "-i",
+        ])
+        .expect("Cli shall accept every short option");
+        assert_eq!(cli.config, Some(PathBuf::from("config")));
+        assert_eq!(cli.game_version, Some(String::from("1.23.4")));
+        assert_eq!(cli.loader, Some(String::from("minecraft")));
+        assert_eq!(cli.download, Some(PathBuf::from("dir")));
+        assert_eq!(cli.install, true);
+    }
+
+    #[test]
+    fn test_cli_parse_require_game_value_version() {
+        Cli::try_parse_from(["exe", "--game-version"])
+            .expect_err("Cli shall require a value if the --game-version option is specified");
+    }
+
+    #[test]
+    fn test_cli_parse_require_game_value_version_short() {
+        Cli::try_parse_from(["exe", "-v"])
+            .expect_err("Cli shall require a value if the -v option is specified");
+    }
+
+    #[test]
+    fn test_cli_parse_require_loader_value() {
+        Cli::try_parse_from(["exe", "--loader"])
+            .expect_err("Cli shall require a value if the --loader option is specified");
+    }
+
+    #[test]
+    fn test_cli_parse_require_loader_value_short() {
+        Cli::try_parse_from(["exe", "-l"])
+            .expect_err("Cli shall require a value if the -l option is specified");
+    }
+
+    #[test]
+    fn test_cli_parse_require_download_value() {
+        Cli::try_parse_from(["exe", "--download"])
+            .expect_err("Cli shall require a value if the --download option is specified");
+    }
+
+    #[test]
+    fn test_cli_parse_require_download_value_short() {
+        Cli::try_parse_from(["exe", "-d"])
+            .expect_err("Cli shall require a value if the -d option is specified");
     }
 }
