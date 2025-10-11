@@ -192,7 +192,7 @@ fn install_files(src: &PathBuf, dot_minecraft: &PathBuf) -> std::io::Result<()> 
     for dir in ["mods", "resourcepacks", "datapacks"] {
         let dir = dot_minecraft.join(dir);
         new_empty_dir(&dir)?;
-    } 
+    }
     copy_dir_all(src, dot_minecraft)?;
     Ok(())
 }
@@ -371,7 +371,11 @@ mod tests {
     }
 
     fn check_children_count(path: &PathBuf, count: usize) {
-        assert_eq!(path.read_dir().expect("Failure to read entries").count(), count, "Path count mismatch for {path:?}");
+        assert_eq!(
+            path.read_dir().expect("Failure to read entries").count(),
+            count,
+            "Path count mismatch for {path:?}"
+        );
     }
 
     #[test]
