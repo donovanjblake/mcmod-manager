@@ -5,15 +5,43 @@ game_version = "1.21.8"
 loader = "fabric"
 
 [projects]
-blazeandcaves-advancements-pack={defaults=true, loader="datapack"}
-iris.defaults=true
+
+# libraries (this section can be removed when dependency resolution is available)
+fabric-api.defaults=true
+cloth-config.defaults=true
+glitchcore.defaults=true
+
+# graphics
+complementary-reimagined.defaults=true
+continuity.defaults=true
 sodium.defaults=true
-lithium.defaults=true
+iris.defaults=true
 distanthorizons.defaults=true
-camps_castles_carriages.defaults=true
+faithful-32x={defaults=true, loader="minecraft"}
+
+# utility
+lithium.defaults=true
 modmenu.defaults=true
-stellaris.defaults=true
 fpsdisplay.defaults=true
-faithful-32x={defaults=true, loader="resourcepack"}
+
+# generation
+"dungeons+".defaults=true
+dungeons-and-taverns.defaults=true
+hopo-better-ruined-portals.defaults=true
+hopo-better-underwater-ruins.defaults=true
+camps_castles_carriages.defaults=true
+scorched.defaults=true
+stellarity.defaults=true
+tidal-towns.defaults=true
+wabi-sabi-structures=true
+
+# other
+blazeandcaves-advancements-pack={defaults=true, loader="datapack"}
 
 [optional-projects]
+# saturated.defaults=true
+rebalanced-loot.defaults=true
+# coven={defaults=true, loader="minecraft"}
+biomesyougo.defaults=true
+# fabric-seasons.defaults=true
+serene-seasons.defaults=true
