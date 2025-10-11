@@ -16,7 +16,7 @@ pub struct Config {
     projects: HashMap<String, OptionConfigProject>,
 
     /// Projects that may be available
-    #[serde(default)]
+    #[serde(default, rename = "optional-projects")]
     optional_projects: HashMap<String, OptionConfigProject>,
 }
 
@@ -155,23 +155,21 @@ impl OptionConfigProject {
 mod tests {
     use super::*;
 
-    const STANDARD: &str = "\
+    const STANDARD: &str = "
         [defaults]
         game_version=\"1.21.2\"
         loader=\"fabric\"
         [projects]
         iris.defaults=true
         faithful-32x={defaults=true,loader=\"minecraft\"}
+        [optional-projects]
+        camps_castles_carriages.defaults = true
+        lithium.defaults = true
         ";
 
     #[test]
-    fn test_parse_toml() {
-        Config::loads(STANDARD).expect("Could not parse toml");
-    }
-
-    #[test]
     fn test_set_game_version() {
-        let mut config = Config::loads(STANDARD).expect("Could not parse toml");
+        let mut config = Config::loads(STANDARD).expect("Config shall be able to parse a toml.");
         config.defaults.game_version = "1.21.4".into();
         let projects = config.projects();
         let expected_projects = Vec::from([
@@ -186,12 +184,15 @@ mod tests {
                 loader: "fabric".into(),
             },
         ]);
-        assert_eq!(projects, expected_projects);
+        assert_eq!(
+            projects, expected_projects,
+            "Config shall return projects with the new default game version."
+        );
     }
 
     #[test]
     fn test_set_loader() {
-        let mut config = Config::loads(STANDARD).expect("Could not parse toml");
+        let mut config = Config::loads(STANDARD).expect("Config shall be able to parse a toml.");
         config.defaults.loader = "neoforge".into();
         let projects = config.projects();
         let expected_projects = Vec::from([
@@ -206,12 +207,15 @@ mod tests {
                 loader: "neoforge".into(),
             },
         ]);
-        assert_eq!(projects, expected_projects);
+        assert_eq!(
+            projects, expected_projects,
+            "Config shall return projects with the new default mod loader."
+        );
     }
 
     #[test]
     fn test_get_projects() {
-        let config = Config::loads(STANDARD).expect("Could not parse toml");
+        let config = Config::loads(STANDARD).expect("Config shall be able to parse a toml.");
         let projects = config.projects();
         let expected_projects = Vec::from([
             ConfigProject {
@@ -225,6 +229,31 @@ mod tests {
                 loader: "fabric".into(),
             },
         ]);
-        assert_eq!(projects, expected_projects);
+        assert_eq!(
+            projects, expected_projects,
+            "Config shall return projects with the default game version and mod loader."
+        );
+    }
+
+    #[test]
+    fn test_get_optional_projects() {
+        let config = Config::loads(STANDARD).expect("Config shall be able to parse a toml.");
+        let projects = config.optional_projects();
+        let expected_projects = Vec::from([
+            ConfigProject {
+                name: "camps_castles_carriages".into(),
+                game_version: "1.21.2".into(),
+                loader: "fabric".into(),
+            },
+            ConfigProject {
+                name: "lithium".into(),
+                game_version: "1.21.2".into(),
+                loader: "fabric".into(),
+            },
+        ]);
+        assert_eq!(
+            projects, expected_projects,
+            "Config shall return projects with the default game version and mod loader."
+        );
     }
 }

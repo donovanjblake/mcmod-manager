@@ -63,7 +63,11 @@ fn collect_versions(
         println!("Collecting {}", project.name);
         let version =
             client.get_project_version(project.name, project.game_version, project.loader)?;
-        println!("  Found {}", version.name);
+        println!(
+            "  Found version {:?} for {:?}",
+            &version.name,
+            (&version.game_versions, &version.loaders)
+        );
         versions.push(version);
     }
     Ok(versions)
@@ -82,11 +86,15 @@ fn collect_optional_versions(
         let version = match version {
             Ok(x) => x,
             Err(e) => {
-                println!("  {e:?}");
+                println!("  Error: {e:?}");
                 continue;
             }
         };
-        println!("  Found {}", version.name);
+        println!(
+            "  Found version {:?} for {:?}",
+            &version.name,
+            (&version.game_versions, &version.loaders)
+        );
         versions.push(version);
     }
     versions
@@ -168,19 +176,21 @@ fn new_empty_dir(dir: &PathBuf) -> std::io::Result<()> {
 
 fn main() {
     let cli = Cli::parse();
-    println!("{cli:?}");
-
-    let mcmod = load_config(&cli).expect("Failure to lod config");
-    println!("{mcmod:?}");
-
+    let mcmod = load_config(&cli).expect("Failure to load config");
     let client = labrinth::Client::new();
     let mut versions = collect_versions(&client, &mcmod).expect("Failure to collect versions");
     versions.append(&mut collect_optional_versions(&client, &mcmod));
-    let temp_path = init_temp(&mcmod.paths.temp).expect("Failure to initialize temp directory");
 
-    if cli.install || cli.download.is_some() {
-        download_files(&client, &versions, &temp_path).expect("Failure to download files");
+    let total = mcmod.projects().len() + mcmod.optional_projects().len();
+    let collected = versions.len();
+    println!("Found {collected}/{total} projects");
+
+    if !cli.install && cli.download.is_none() {
+        return;
     }
+
+    let temp_path = init_temp(&mcmod.paths.temp).expect("Failure to initialize temp directory");
+    download_files(&client, &versions, &temp_path).expect("Failure to download files");
 
     if let Some(download_path) = cli.download.as_ref() {
         println!("Copying to {download_path:?}");
@@ -210,11 +220,11 @@ mod tests {
     fn test_cli_parse_empty() {
         let cli =
             Cli::try_parse_from(["exe"]).expect("Cli shall be able to run with zero arguments");
-        assert_eq!(cli.config, None);
-        assert_eq!(cli.game_version, None);
-        assert_eq!(cli.loader, None);
-        assert_eq!(cli.download, None);
-        assert_eq!(cli.install, false);
+        assert_eq!(cli.config, None, "Cli shall set falsy defaults");
+        assert_eq!(cli.game_version, None, "Cli shall set falsy defaults");
+        assert_eq!(cli.loader, None, "Cli shall set falsy defaults");
+        assert_eq!(cli.download, None, "Cli shall set falsy defaults");
+        assert_eq!(cli.install, false, "Cli shall set falsy defaults");
     }
 
     #[test]
@@ -231,11 +241,27 @@ mod tests {
             "--install",
         ])
         .expect("Cli shall accept every long option");
-        assert_eq!(cli.config, Some(PathBuf::from("config")));
-        assert_eq!(cli.game_version, Some(String::from("1.23.4")));
-        assert_eq!(cli.loader, Some(String::from("minecraft")));
-        assert_eq!(cli.download, Some(PathBuf::from("dir")));
-        assert_eq!(cli.install, true);
+        assert_eq!(
+            cli.config,
+            Some(PathBuf::from("config")),
+            "Cli shall read the input config"
+        );
+        assert_eq!(
+            cli.game_version,
+            Some(String::from("1.23.4")),
+            "Cli shall read the input game version"
+        );
+        assert_eq!(
+            cli.loader,
+            Some(String::from("minecraft")),
+            "Cli shall read the input mod loader"
+        );
+        assert_eq!(
+            cli.download,
+            Some(PathBuf::from("dir")),
+            "Cli shall read the input download directory"
+        );
+        assert_eq!(cli.install, true, "Cli shall set the install flag");
     }
 
     #[test]
@@ -252,11 +278,27 @@ mod tests {
             "-i",
         ])
         .expect("Cli shall accept every short option");
-        assert_eq!(cli.config, Some(PathBuf::from("config")));
-        assert_eq!(cli.game_version, Some(String::from("1.23.4")));
-        assert_eq!(cli.loader, Some(String::from("minecraft")));
-        assert_eq!(cli.download, Some(PathBuf::from("dir")));
-        assert_eq!(cli.install, true);
+        assert_eq!(
+            cli.config,
+            Some(PathBuf::from("config")),
+            "Cli shall read the input config"
+        );
+        assert_eq!(
+            cli.game_version,
+            Some(String::from("1.23.4")),
+            "Cli shall read the input game version"
+        );
+        assert_eq!(
+            cli.loader,
+            Some(String::from("minecraft")),
+            "Cli shall read the input mod loader"
+        );
+        assert_eq!(
+            cli.download,
+            Some(PathBuf::from("dir")),
+            "Cli shall read the input download directory"
+        );
+        assert_eq!(cli.install, true, "Cli shall set the install flag");
     }
 
     #[test]
