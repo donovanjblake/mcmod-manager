@@ -66,6 +66,28 @@ fn collect_versions(
     Ok(versions)
 }
 
+fn collect_optional_versions(
+    client: &labrinth::Client,
+    mcmod: &config::Config,
+) -> Vec<labrinth::ProjectVersion> {
+    let mut versions = Vec::<labrinth::ProjectVersion>::new();
+    for project in mcmod.optional_projects() {
+        println!("Collecting {}", project.name);
+        let version =
+            client.get_project_version(project.name, project.game_version, project.loader);
+        let version = match version {
+            Ok(x) => x,
+            Err(e) => {
+                println!("  {e:?}");
+                continue;
+            }
+        };
+        println!("  Found {}", version.name);
+        versions.push(version);
+    }
+    versions
+}
+
 fn init_temp(tmp: &PathBuf) -> std::io::Result<PathBuf> {
     // TODO: Make hashed temp paths to prevent collisions with other instances
     new_empty_dir(tmp)?;
@@ -144,8 +166,9 @@ fn main() {
     println!("{mcmod:?}");
 
     let client = labrinth::Client::new();
-    let versions = collect_versions(&client, &mcmod).expect("Failure to collect versions");
-    let temp_path = init_temp(&mcmod.defaults.temp).expect("Failure to initialize temp directory");
+    let mut versions = collect_versions(&client, &mcmod).expect("Failure to collect versions");
+    versions.append(&mut collect_optional_versions(&client, &mcmod));
+    let temp_path = init_temp(&mcmod.paths.temp).expect("Failure to initialize temp directory");
 
     if cli.install || cli.download.is_some() {
         download_files(&client, &versions, &temp_path).expect("Failure to download files");
@@ -159,12 +182,12 @@ fn main() {
     }
 
     if cli.install {
-        println!("Installing to {:?}", mcmod.defaults.dot_minecraft);
+        println!("Installing to {:?}", mcmod.paths.dot_minecraft);
         for dir in ["mods", "resourcepacks", "datapacks"] {
-            let dir = mcmod.defaults.dot_minecraft.join(dir);
+            let dir = mcmod.paths.dot_minecraft.join(dir);
             new_empty_dir(&dir).expect("Failure to empty .minecraft sub-directory");
         }
-        copy_dir_all(&temp_path, &mcmod.defaults.dot_minecraft)
+        copy_dir_all(&temp_path, &mcmod.paths.dot_minecraft)
             .expect("Failure to copy install files to .minecraft directory");
     }
 }

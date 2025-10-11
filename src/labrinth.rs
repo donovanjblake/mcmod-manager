@@ -28,12 +28,12 @@ impl Client {
 
     fn get_form<U, P>(&self, url: U, params: &P) -> Result<rb::Response>
     where
-        U: reqwest::IntoUrl,
+        U: reqwest::IntoUrl + Clone,
         P: serde::Serialize + ?Sized,
     {
         self.client
             .get(url)
-            .form(&params)
+            .query(&params)
             .send()
             .map_err(Error::from)?
             .error_for_status()
@@ -122,7 +122,7 @@ mod tests {
         let loader = "minecraft".to_string();
         let version = client
             .get_project_version("faithful-32x", &game_version, &loader)
-            .expect("Client should get the latest project version");
+            .expect("Client should get a project version");
         if !version.game_versions.contains(&game_version) || !version.loaders.contains(&loader) {
             panic!("Client should get the latest project version for a specific target {version:?}")
         }
@@ -131,9 +131,14 @@ mod tests {
     #[test]
     fn test_download_files() {
         let client = Client::new();
+        let game_version = "1.21.2".to_string();
+        let loader = "fabric".to_string();
         let version = client
-            .get_project_version("iris", "1.21.2", "fabric")
-            .expect("Client should be able to get a latest project version");
+            .get_project_version("iris", &game_version, &loader)
+            .expect("Client should get a project version");
+        if !version.game_versions.contains(&game_version) || !version.loaders.contains(&loader) {
+            panic!("Client should get the latest project version for a specific target {version:?}")
+        }
         let _files = client
             .download_version_files(&version)
             .expect("Client should be able to download files");
