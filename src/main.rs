@@ -10,16 +10,17 @@ mod config;
 mod error;
 mod labrinth;
 
+/// The options passed to the program through the command line interface
 #[derive(Parser, Debug)]
 struct Cli {
     /// The config file to load. Defaults to ./mcmod.toml
     config: Option<PathBuf>,
 
-    /// Override the default game version from the config
+    /// Override the default game version in the config
     #[arg(long, short = 'v')]
     game_version: Option<String>,
 
-    /// Override the default loader from the config
+    /// Override the default mod loader in the config
     #[arg(long, short)]
     loader: Option<String>,
 
@@ -32,6 +33,7 @@ struct Cli {
     install: bool,
 }
 
+/// Load a config, overriding values as specified in cli
 fn load_config(cli: &Cli) -> Result<config::Config> {
     let config_path = cli
         .config
@@ -51,6 +53,7 @@ fn load_config(cli: &Cli) -> Result<config::Config> {
     Ok(mcmod)
 }
 
+/// Get the versions of projects from the server. If any are not found, return Err
 fn collect_versions(
     client: &labrinth::Client,
     mcmod: &config::Config,
@@ -66,6 +69,7 @@ fn collect_versions(
     Ok(versions)
 }
 
+/// Get the optional projects from the server. Skip any that are not found.
 fn collect_optional_versions(
     client: &labrinth::Client,
     mcmod: &config::Config,
@@ -88,12 +92,14 @@ fn collect_optional_versions(
     versions
 }
 
+/// Initialize the temp directory to be empty
 fn init_temp(tmp: &PathBuf) -> std::io::Result<PathBuf> {
     // TODO: Make hashed temp paths to prevent collisions with other instances
     new_empty_dir(tmp)?;
     Ok(tmp.clone())
 }
 
+/// Download the files from the given versions into the temp directory
 fn download_files(
     client: &labrinth::Client,
     versions: &Vec<labrinth::ProjectVersion>,
@@ -119,6 +125,7 @@ fn download_files(
     Ok(())
 }
 
+/// Copy all fils recursively from src to dst, creating dst and overwriting files as needed.
 fn copy_dir_all(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
     if dst.starts_with(src) {
         return Err(std::io::Error::new(
@@ -151,6 +158,7 @@ fn copy_dir_all(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
     Ok(())
 }
 
+/// Create dir if it does not exist, and delete any files in it.
 fn new_empty_dir(dir: &PathBuf) -> std::io::Result<()> {
     if dir.exists() {
         fs::remove_dir_all(dir)?;
@@ -174,10 +182,12 @@ fn main() {
         download_files(&client, &versions, &temp_path).expect("Failure to download files");
     }
 
-    if let Some(download_path) = cli.download {
+    if let Some(download_path) = cli.download.as_ref() {
         println!("Copying to {download_path:?}");
-        new_empty_dir(&download_path).expect("Failure to remove temporary directory");
-        copy_dir_all(&temp_path, &download_path)
+        if !download_path.try_exists().is_ok_and(|x| x) {
+            fs::create_dir(download_path).expect("Failure to create download directory");
+        }
+        copy_dir_all(&temp_path, download_path)
             .expect("Failure to copy downloaded files to download directory");
     }
 
