@@ -4,11 +4,14 @@ use std::{
 };
 
 use clap::Parser;
-use error::{Error, Result};
+use error::Result;
+
+use crate::types::{MinecraftVersion, ModLoader};
 
 mod config;
 mod error;
 mod labrinth;
+mod types;
 
 /// The options passed to the program through the command line interface
 #[derive(Parser, Debug)]
@@ -17,12 +20,12 @@ struct Cli {
     config: Option<PathBuf>,
 
     /// Override the default game version in the config
-    #[arg(long, short = 'v')]
-    game_version: Option<String>,
+    #[arg(long, short = 'v', value_parser = clap::value_parser!(MinecraftVersion))]
+    game_version: Option<MinecraftVersion>,
 
     /// Override the default mod loader in the config
     #[arg(long, short)]
-    loader: Option<String>,
+    loader: Option<ModLoader>,
 
     /// Download the files to the given directory
     #[arg(long, short)]
@@ -31,6 +34,10 @@ struct Cli {
     /// Install mods, resource packs, etc into .minecraft directory
     #[arg(long, short)]
     install: bool,
+
+    /// Validate internal data types
+    #[arg(long)]
+    validate: bool,
 }
 
 /// Load a config, overriding values as specified in cli
@@ -39,17 +46,10 @@ fn load_config(cli: &Cli) -> Result<config::Config> {
         .config
         .to_owned()
         .unwrap_or_else(|| PathBuf::from("./mcmod.toml"));
-    let mut mcmod = config::Config::loads(
-        std::fs::read_to_string(config_path)
-            .map_err(Error::from)?
-            .as_str(),
-    )?;
+    let mut mcmod = config::Config::loads(std::fs::read_to_string(config_path)?.as_str())?;
     cli.game_version
-        .as_ref()
-        .inspect(|x| mcmod.defaults.game_version = x.to_string());
-    cli.loader
-        .as_ref()
-        .inspect(|x| mcmod.defaults.loader = x.to_string());
+        .inspect(|x| mcmod.defaults.game_version = *x);
+    cli.loader.inspect(|x| mcmod.defaults.loader = *x);
     Ok(mcmod)
 }
 
@@ -132,9 +132,9 @@ fn download_files(
     for version in versions {
         println!("Downloading {}", version.name);
         let files = client.download_version_files(version)?;
-        let folder = match version.loaders.first().map(|x| x.as_str()) {
-            Some("minecraft") => "resourcepacks",
-            Some("datapack") => "datapacks",
+        let folder = match version.loaders.first() {
+            Some(ModLoader::Minecraft) => "resourcepacks",
+            Some(ModLoader::Datapack) => "datapacks",
             _ => "mods",
         };
         for (info, bytes) in files {
@@ -201,6 +201,13 @@ fn main() {
     let cli = Cli::parse();
     let mcmod = load_config(&cli).expect("Failure to load config");
     let client = labrinth::Client::new();
+    if cli.validate {
+        let errors = client.validate_enums().expect("Failed to compare data");
+        if !errors.is_empty() {
+            println!("{errors:?}")
+        }
+    }
+
     let versions = collect_versions(&client, &mcmod).expect("Failure to collect versions");
 
     let total = mcmod.projects().len() + mcmod.optional_projects().len();
@@ -265,12 +272,12 @@ mod tests {
         );
         assert_eq!(
             cli.game_version,
-            Some(String::from("1.23.4")),
+            Some(MinecraftVersion::from("1.23.4")),
             "Cli shall read the input game version"
         );
         assert_eq!(
             cli.loader,
-            Some(String::from("minecraft")),
+            Some(ModLoader::Minecraft),
             "Cli shall read the input mod loader"
         );
         assert_eq!(
@@ -302,12 +309,12 @@ mod tests {
         );
         assert_eq!(
             cli.game_version,
-            Some(String::from("1.23.4")),
+            Some(MinecraftVersion::from("1.23.4")),
             "Cli shall read the input game version"
         );
         assert_eq!(
             cli.loader,
-            Some(String::from("minecraft")),
+            Some(ModLoader::Minecraft),
             "Cli shall read the input mod loader"
         );
         assert_eq!(

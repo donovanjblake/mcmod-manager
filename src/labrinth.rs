@@ -1,4 +1,5 @@
 use crate::error::{Error, Result};
+use crate::types::{self, MinecraftVersion, ModLoader};
 use reqwest::blocking as rb;
 
 const LABRINTH_URL: &str = "https://api.modrinth.com";
@@ -18,12 +19,7 @@ impl Client {
     where
         U: reqwest::IntoUrl,
     {
-        self.client
-            .get(url)
-            .send()
-            .map_err(Error::from)?
-            .error_for_status()
-            .map_err(Error::from)
+        Ok(self.client.get(url).send()?.error_for_status()?)
     }
 
     fn get_form<U, P>(&self, url: U, params: &P) -> Result<rb::Response>
@@ -31,26 +27,23 @@ impl Client {
         U: reqwest::IntoUrl + Clone,
         P: serde::Serialize + ?Sized,
     {
-        self.client
+        Ok(self
+            .client
             .get(url)
             .query(&params)
-            .send()
-            .map_err(Error::from)?
-            .error_for_status()
-            .map_err(Error::from)
+            .send()?
+            .error_for_status()?)
     }
 
     /// Get the latest version of a project for the target Minecraft version and mod loader
-    pub fn get_project_version<S, T, U>(
+    pub fn get_project_version<S>(
         &self,
         project: S,
-        game_version: T,
-        loader: U,
+        game_version: MinecraftVersion,
+        loader: types::ModLoader,
     ) -> Result<ProjectVersion>
     where
         S: std::fmt::Display,
-        T: std::fmt::Display,
-        U: std::fmt::Display,
     {
         let params = [
             ("game_versions", format!("[\"{game_version}\"]")),
@@ -61,10 +54,7 @@ impl Client {
             &params,
         )?;
         let url = response.url().as_str().to_owned();
-        let versions = serde_json::from_str::<Vec<ProjectVersion>>(
-            response.text().map_err(Error::from)?.as_str(),
-        )
-        .map_err(Error::from)?;
+        let versions = serde_json::from_str::<Vec<ProjectVersion>>(response.text()?.as_str())?;
         let version = versions
             .into_iter()
             .max_by(|lhs, rhs| lhs.date_published.cmp(&rhs.date_published))
@@ -74,10 +64,10 @@ impl Client {
 
     /// Download a single file
     pub fn download_file(&self, version_file: &VersionFile) -> Result<Vec<u8>> {
-        self.get(version_file.url.clone())?
+        Ok(self
+            .get(version_file.url.clone())?
             .bytes()
-            .map(|x| x.into())
-            .map_err(Error::from)
+            .map(|x| x.into())?)
     }
 
     /// Download the files of a version into a list of tuples of the file info and the bytes
@@ -91,6 +81,19 @@ impl Client {
         }
         Ok(result)
     }
+
+    /// Validate all internal enumerations are up to date
+    pub fn validate_enums(&self) -> Result<Vec<Error>> {
+        let mut result = Vec::<Error>::new();
+        let repsonse = self.get(format!("{LABRINTH_URL}/v2/tag/loader"))?;
+        let values = serde_json::from_str::<Vec<LoaderInfo>>(repsonse.text()?.as_str())?;
+        for v in values {
+            if let Err(e) = ModLoader::try_from(v.name.as_str()) {
+                result.push(e)
+            }
+        }
+        Ok(result)
+    }
 }
 
 #[derive(serde::Deserialize, Debug, PartialEq, Eq)]
@@ -101,14 +104,19 @@ pub struct ProjectVersion {
     pub name: String,
     pub files: Vec<VersionFile>,
     pub date_published: String,
-    pub loaders: Vec<String>,
-    pub game_versions: Vec<String>,
+    pub loaders: Vec<ModLoader>,
+    pub game_versions: Vec<MinecraftVersion>,
 }
 
 #[derive(serde::Deserialize, Debug, PartialEq, Eq)]
 pub struct VersionFile {
     pub url: String,
     pub filename: String,
+}
+
+#[derive(serde::Deserialize, Debug)]
+struct LoaderInfo {
+    pub name: String,
 }
 
 #[cfg(test)]
@@ -118,10 +126,10 @@ mod tests {
     #[test]
     fn test_get_project_version() {
         let client = Client::new();
-        let game_version = "1.21.2".to_string();
-        let loader = "minecraft".to_string();
+        let game_version = MinecraftVersion::from("1.21.2");
+        let loader = ModLoader::Minecraft;
         let version = client
-            .get_project_version("faithful-32x", &game_version, &loader)
+            .get_project_version("faithful-32x", game_version, loader)
             .expect("Client should get a project version");
         if !version.game_versions.contains(&game_version) || !version.loaders.contains(&loader) {
             panic!("Client should get the latest project version for a specific target {version:?}")
@@ -131,10 +139,10 @@ mod tests {
     #[test]
     fn test_download_files() {
         let client = Client::new();
-        let game_version = "1.21.2".to_string();
-        let loader = "fabric".to_string();
+        let game_version = MinecraftVersion::from("1.21.2");
+        let loader = ModLoader::Fabric;
         let version = client
-            .get_project_version("iris", &game_version, &loader)
+            .get_project_version("iris", game_version, loader)
             .expect("Client should get a project version");
         if !version.game_versions.contains(&game_version) || !version.loaders.contains(&loader) {
             panic!("Client should get the latest project version for a specific target {version:?}")
@@ -142,5 +150,13 @@ mod tests {
         let _files = client
             .download_version_files(&version)
             .expect("Client should be able to download files");
+    }
+
+    #[test]
+    fn test_validate_data() {
+        let client = Client::new();
+        client
+            .validate_enums()
+            .expect("Client shall be able to get and compare data");
     }
 }
