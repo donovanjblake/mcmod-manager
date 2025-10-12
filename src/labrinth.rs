@@ -126,7 +126,7 @@ mod tests {
     #[test]
     fn test_get_project_version() {
         let client = Client::new();
-        let game_version = MinecraftVersion::try_from("1.21.2").expect("Invalid");
+        let game_version = MinecraftVersion::from("1.21.2");
         let loader = ModLoader::Minecraft;
         let version = client
             .get_project_version("faithful-32x", game_version, loader)
@@ -139,7 +139,7 @@ mod tests {
     #[test]
     fn test_download_files() {
         let client = Client::new();
-        let game_version = MinecraftVersion::try_from("1.21.2").expect("Invalid");
+        let game_version = MinecraftVersion::from("1.21.2");
         let loader = ModLoader::Fabric;
         let version = client
             .get_project_version("iris", game_version, loader)

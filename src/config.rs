@@ -176,7 +176,7 @@ mod tests {
     fn test_set_game_version() {
         create_test_paths();
         let mut config = load_test_config();
-        let expected_version = MinecraftVersion::try_from("1.21.4").expect("Invalid");
+        let expected_version = MinecraftVersion::from("1.21.4");
         config.defaults.game_version = expected_version;
         let projects = config.projects();
         let expected_projects = Vec::from([
@@ -206,7 +206,7 @@ mod tests {
     fn test_set_loader() {
         create_test_paths();
         let mut config = load_test_config();
-        let expected_version = MinecraftVersion::try_from("1.21.5").expect("Invalid");
+        let expected_version = MinecraftVersion::from("1.21.5");
         config.defaults.loader = ModLoader::NeoForge;
         let projects = config.projects();
         let expected_projects = Vec::from([
@@ -237,7 +237,7 @@ mod tests {
         create_test_paths();
         let config = load_test_config();
         let projects = config.projects();
-        let expected_version = MinecraftVersion::try_from("1.21.5").expect("Invalid");
+        let expected_version = MinecraftVersion::from("1.21.5");
         let expected_projects = Vec::from([
             ConfigProject {
                 name: "blazeandcaves-advancements-pack".into(),
@@ -266,7 +266,7 @@ mod tests {
         create_test_paths();
         let config = load_test_config();
         let projects = config.optional_projects();
-        let expected_version = MinecraftVersion::try_from("1.21.5").expect("Invalid");
+        let expected_version = MinecraftVersion::from("1.21.5");
         let expected_projects = Vec::from([
             ConfigProject {
                 name: "camps_castles_carriages".into(),

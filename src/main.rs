@@ -272,7 +272,7 @@ mod tests {
         );
         assert_eq!(
             cli.game_version,
-            Some(MinecraftVersion::try_from("1.23.4").expect("Invalid")),
+            Some(MinecraftVersion::from("1.23.4")),
             "Cli shall read the input game version"
         );
         assert_eq!(
@@ -309,7 +309,7 @@ mod tests {
         );
         assert_eq!(
             cli.game_version,
-            Some(MinecraftVersion::try_from("1.23.4").expect("Invalid")),
+            Some(MinecraftVersion::from("1.23.4")),
             "Cli shall read the input game version"
         );
         assert_eq!(
