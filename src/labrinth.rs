@@ -62,6 +62,32 @@ impl Client {
         Ok(version)
     }
 
+    /// Get all the depencencies of the given project version
+    pub fn get_version_dependencies(
+        &self,
+        version: &ProjectVersion,
+        game_version: MinecraftVersion,
+        loader: types::ModLoader,
+    ) -> Result<Vec<ProjectVersion>> {
+        let mut result = Vec::<ProjectVersion>::new();
+        for dependency in &version.dependencies {
+            if dependency.kind != DependencyKind::Required {
+                continue;
+            }
+            if let Some(version_id) = &dependency.version_id {
+                let response = self.get(format!("{LABRINTH_URL}/v2/version/{version_id}"))?;
+                let version = serde_json::from_str::<ProjectVersion>(response.text()?.as_str())?;
+                result.push(version);
+            } else if let Some(project_id) = &dependency.project_id {
+                let version = self.get_project_version(project_id, game_version, loader)?;
+                result.push(version);
+            } else {
+                todo!("Give some kind of message for filename kinds")
+            }
+        }
+        Ok(result)
+    }
+
     /// Download a single file
     pub fn download_file(&self, version_file: &VersionFile) -> Result<Vec<u8>> {
         Ok(self
@@ -106,12 +132,31 @@ pub struct ProjectVersion {
     pub date_published: String,
     pub loaders: Vec<ModLoader>,
     pub game_versions: Vec<MinecraftVersion>,
+    pub dependencies: Vec<VersionDependency>,
 }
 
 #[derive(serde::Deserialize, Debug, PartialEq, Eq)]
 pub struct VersionFile {
     pub url: String,
     pub filename: String,
+}
+
+#[derive(serde::Deserialize, Debug, PartialEq, Eq)]
+pub struct VersionDependency {
+    pub project_id: Option<String>,
+    pub version_id: Option<String>,
+    pub filename: Option<String>,
+    #[serde(rename = "dependency_type")]
+    pub kind: DependencyKind,
+}
+
+#[derive(serde::Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum DependencyKind {
+    Required,
+    Optional,
+    Incompatible,
+    Embedded,
 }
 
 #[derive(serde::Deserialize, Debug)]

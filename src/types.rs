@@ -24,6 +24,7 @@ pub enum ModLoader {
     Fabric,
     #[strum(to_string = "forge")]
     Forge,
+    #[serde(rename = "neoforge")]
     #[strum(to_string = "neoforge")]
     NeoForge,
     #[strum(to_string = "quilt")]
@@ -85,17 +86,20 @@ pub struct MinecraftVersion {
     minor: u8,
     /// Patch version number
     patch: Option<u8>,
+    /// Release candidate number
+    rc: Option<u8>,
 }
 
 impl std::fmt::Display for MinecraftVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{}.{}.{}",
+            "{}.{}.{}{}",
             self.major,
             self.minor,
             self.patch
-                .map_or_else(|| String::from("x"), |x| x.to_string())
+                .map_or_else(|| String::from("x"), |x| x.to_string()),
+            self.rc.map_or(String::new(), |x| format!("-rc{x}"))
         )
     }
 }
@@ -103,12 +107,13 @@ impl std::fmt::Display for MinecraftVersion {
 impl From<MinecraftVersion> for String {
     fn from(value: MinecraftVersion) -> Self {
         format!(
-            "{}.{}.{}",
+            "{}.{}.{}{}",
             value.major,
             value.minor,
             value
                 .patch
-                .map_or_else(|| String::from("x"), |x| x.to_string())
+                .map_or_else(|| String::from("x"), |x| x.to_string()),
+            value.rc.map_or(String::new(), |x| format!("-rc{x}"))
         )
     }
 }
@@ -125,15 +130,23 @@ impl TryFrom<String> for MinecraftVersion {
                 .map_err(|_| Error::InvalidMinecraftVersion(value.to_string()))
         };
         let (major, minor) = (parse_u8(parts[0])?, parse_u8(parts[1])?);
-        let patch = if parts.get(2).map_or("x", |x| *x).eq_ignore_ascii_case("x") {
-            None
+        let (patch, rc) = if parts.get(2).map_or("x", |x| *x).eq_ignore_ascii_case("x") {
+            (None, None)
         } else {
-            Some(parse_u8(parts[2])?)
+            let parts: Vec<_> = parts.get(2).unwrap().split("-rc").collect();
+            let patch = Some(parse_u8(parts[0])?);
+            let rc = if let Some(s) = parts.get(1) {
+                Some(parse_u8(s)?)
+            } else {
+                None
+            };
+            (patch, rc)
         };
         Ok(MinecraftVersion {
             major,
             minor,
             patch,
+            rc,
         })
     }
 }
@@ -164,7 +177,24 @@ mod tests {
             MinecraftVersion {
                 major: 1,
                 minor: 23,
-                patch: Some(4)
+                patch: Some(4),
+                rc: None,
+            }
+        );
+    }
+
+    #[test]
+    fn test_version_rc() {
+        let parsed = MinecraftVersion::try_from("1.23.4-rc5").expect(
+            "MinecraftVersion shall be able to parse a version string of a release candidate",
+        );
+        assert_eq!(
+            parsed,
+            MinecraftVersion {
+                major: 1,
+                minor: 23,
+                patch: Some(4),
+                rc: Some(5),
             }
         );
     }
@@ -177,7 +207,9 @@ mod tests {
             MinecraftVersion {
                 major: 1,
                 minor: 23,
-                patch: None
+                patch: None,
+
+                rc: None,
             }
         );
     }
@@ -190,7 +222,8 @@ mod tests {
             MinecraftVersion {
                 major: 1,
                 minor: 23,
-                patch: None
+                patch: None,
+                rc: None,
             }
         );
     }

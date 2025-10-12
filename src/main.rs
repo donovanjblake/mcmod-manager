@@ -91,13 +91,40 @@ fn collect_optional_versions(
             }
         };
         println!(
-            "  Found version {:?} for {:?}",
-            &version.name,
-            (&version.game_versions, &version.loaders)
+            "  Found version {:?} for ({:?}, {:?})",
+            &version.name, &version.game_versions, &version.loaders
         );
         versions.push(version);
     }
     versions
+}
+
+/// Get all the dependencies of all the given project versions recursively
+fn collect_dependencies(
+    client: &labrinth::Client,
+    mcmod: &config::Config,
+    versions: &Vec<labrinth::ProjectVersion>,
+) -> Result<Vec<labrinth::ProjectVersion>> {
+    if versions.is_empty() {
+        return Ok(Default::default());
+    }
+    let mut result = Vec::<labrinth::ProjectVersion>::new();
+    for base in versions {
+        let mut deps = client.get_version_dependencies(
+            base,
+            mcmod.defaults.game_version,
+            mcmod.defaults.loader,
+        )?;
+        if !deps.is_empty() {
+            println!(
+                "  Collected dependences {:?}",
+                deps.iter().map(|d| &d.name).collect::<Vec<_>>()
+            );
+            deps.append(&mut collect_dependencies(client, mcmod, &deps)?);
+            result.append(&mut deps);
+        }
+    }
+    Ok(result)
 }
 
 /// Get the versions of projects from the server.
@@ -107,6 +134,7 @@ fn collect_versions(
 ) -> Result<Vec<labrinth::ProjectVersion>> {
     let mut versions = collect_required_versions(client, mcmod)?;
     versions.append(&mut collect_optional_versions(client, mcmod));
+    versions.append(&mut collect_dependencies(client, mcmod, &versions)?);
     Ok(versions)
 }
 
@@ -125,7 +153,7 @@ fn download_files(
     path: &Path,
 ) -> Result<()> {
     new_empty_dir(&path.to_path_buf()).expect("Failure to empty temp sub-directory");
-    for dir in ["mods", "resourcepacks", "datapacks"] {
+    for dir in ["mods", "resourcepacks", "datapacks", "shaderpacks"] {
         let dir = path.join(dir);
         new_empty_dir(&dir).expect("Failure to empty temp sub-directory");
     }
@@ -135,6 +163,7 @@ fn download_files(
         let folder = match version.loaders.first() {
             Some(ModLoader::Minecraft) => "resourcepacks",
             Some(ModLoader::Datapack) => "datapacks",
+            Some(ModLoader::Iris) | Some(ModLoader::Optifine) => "shaderpacks",
             _ => "mods",
         };
         for (info, bytes) in files {
@@ -396,7 +425,7 @@ mod tests {
         let minecraft = &mcmod.paths.dot_minecraft;
         install_files(&temp, &minecraft).expect("Failure to install files");
         check_children_count(&minecraft.join("datapacks"), 1);
-        check_children_count(&minecraft.join("mods"), 2);
+        check_children_count(&minecraft.join("mods"), 3);
         check_children_count(&minecraft.join("resourcepacks"), 1);
     }
 }

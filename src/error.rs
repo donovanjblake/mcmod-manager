@@ -1,6 +1,6 @@
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug, strum::Display)]
+#[derive(Debug)]
 pub enum Error {
     #[allow(dead_code)]
     IO(std::io::Error),
@@ -16,6 +16,20 @@ pub enum Error {
     InvalidLoader(String),
     #[allow(dead_code)]
     InvalidMinecraftVersion(String),
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            Error::IO(error) => write!(f, "IO: {error:?}"),
+            Error::TomlParse(error) => write!(f, "TOML: {error:?}"),
+            Error::JsonParse(error) => write!(f, "JSON: {error:?}"),
+            Error::Request(error) => write!(f, "Request: {error:?}"),
+            Error::ResponseEmpty { url } => write!(f, "Response emptry for {url:?}"),
+            Error::InvalidLoader(x) => write!(f, "Invalid loader {x:?}"),
+            Error::InvalidMinecraftVersion(x) => write!(f, "Invalid minecraft version {x:?}"),
+        }
+    }
 }
 
 impl Error {
