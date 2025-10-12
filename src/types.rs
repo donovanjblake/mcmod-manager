@@ -138,8 +138,60 @@ impl TryFrom<String> for MinecraftVersion {
     }
 }
 
+// impl TryFrom<&str> for MinecraftVersion {
+//     type Error = Error;
+//     fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+//         MinecraftVersion::try_from(value.to_string())
+//     }
+// }
+
 impl From<&str> for MinecraftVersion {
     fn from(value: &str) -> Self {
-        MinecraftVersion::try_from(value.to_string()).expect("Invalid")
+        MinecraftVersion::try_from(value.to_string()).expect("Invalid minecraft version")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::types::MinecraftVersion;
+
+    #[test]
+    fn test_version_full() {
+        let parsed = MinecraftVersion::try_from("1.23.4")
+            .expect("MinecraftVersion shall be able to parse a version string");
+        assert_eq!(
+            parsed,
+            MinecraftVersion {
+                major: 1,
+                minor: 23,
+                patch: Some(4)
+            }
+        );
+    }
+
+    #[test]
+    fn test_version_patch_x() {
+        let parsed = MinecraftVersion::try_from("1.23.x").expect("MinecraftVersion shall be able to parse a version string where the patch version is 'x'");
+        assert_eq!(
+            parsed,
+            MinecraftVersion {
+                major: 1,
+                minor: 23,
+                patch: None
+            }
+        );
+    }
+
+    #[test]
+    fn test_version_patch_none() {
+        let parsed = MinecraftVersion::try_from("1.23").expect("MinecraftVersion shall be able to parse a version string where the patch version is not given");
+        assert_eq!(
+            parsed,
+            MinecraftVersion {
+                major: 1,
+                minor: 23,
+                patch: None
+            }
+        );
     }
 }
