@@ -6,7 +6,7 @@ use std::{
 use clap::Parser;
 use error::Result;
 
-use crate::types::{ModLoader, MinecraftVersion};
+use crate::types::{MinecraftVersion, ModLoader};
 
 mod config;
 mod error;

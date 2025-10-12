@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use crate::error::Result;
-use crate::types::{ModLoader, MinecraftVersion};
+use crate::types::{MinecraftVersion, ModLoader};
 
 /// Configuration containing paths and projects to use
 #[derive(Debug, serde::Deserialize, serde::Serialize)]

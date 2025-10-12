@@ -77,7 +77,7 @@ pub enum ModLoader {
 
 /// Minecraft version structure
 #[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
-#[serde(try_from = "String", into="String")]
+#[serde(try_from = "String", into = "String")]
 pub struct MinecraftVersion {
     /// Major version number
     major: u8,
@@ -89,17 +89,27 @@ pub struct MinecraftVersion {
 
 impl std::fmt::Display for MinecraftVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}.{}.{}",
-                self.major,
-                self.minor,
-                self.patch
-                    .map_or_else(|| String::from("x"), |x| x.to_string()))
+        write!(
+            f,
+            "{}.{}.{}",
+            self.major,
+            self.minor,
+            self.patch
+                .map_or_else(|| String::from("x"), |x| x.to_string())
+        )
     }
 }
 
-impl Into<String> for MinecraftVersion {
-    fn into(self) -> String {
-        format!("{self}")
+impl From<MinecraftVersion> for String {
+    fn from(value: MinecraftVersion) -> Self {
+        format!(
+            "{}.{}.{}",
+            value.major,
+            value.minor,
+            value
+                .patch
+                .map_or_else(|| String::from("x"), |x| x.to_string())
+        )
     }
 }
 
@@ -115,7 +125,7 @@ impl TryFrom<String> for MinecraftVersion {
                 .map_err(|_| Error::InvalidMinecraftVersion(value.to_string()))
         };
         let (major, minor) = (parse_u8(parts[0])?, parse_u8(parts[1])?);
-        let patch = if parts.get(2).map_or("x", |x| *x).to_ascii_lowercase() == String::from("x") {
+        let patch = if parts.get(2).map_or("x", |x| *x).eq_ignore_ascii_case("x") {
             None
         } else {
             Some(parse_u8(parts[2])?)
