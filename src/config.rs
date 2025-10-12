@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use crate::error::Result;
-use crate::types::ModLoader;
+use crate::types::{ModLoader, MinecraftVersion};
 
 /// Configuration containing paths and projects to use
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
@@ -85,7 +85,7 @@ pub struct ConfigProject {
     pub name: String,
 
     /// Target Minecraft version
-    pub game_version: String,
+    pub game_version: MinecraftVersion,
 
     /// Target mod loader
     pub loader: ModLoader,
@@ -95,7 +95,7 @@ pub struct ConfigProject {
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct ConfigDefaults {
     /// Target Minecraft version
-    pub game_version: String,
+    pub game_version: MinecraftVersion,
 
     /// Mod loader
     pub loader: ModLoader,
@@ -131,7 +131,7 @@ impl Default for ConfigPaths {
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 struct OptionConfigProject {
     /// Target Minecraft version
-    pub game_version: Option<String>,
+    pub game_version: Option<MinecraftVersion>,
 
     /// Target mod loader
     pub loader: Option<ModLoader>,
@@ -176,22 +176,23 @@ mod tests {
     fn test_set_game_version() {
         create_test_paths();
         let mut config = load_test_config();
-        config.defaults.game_version = "1.21.4".into();
+        let expected_version = MinecraftVersion::try_from("1.21.4").expect("Invalid");
+        config.defaults.game_version = expected_version;
         let projects = config.projects();
         let expected_projects = Vec::from([
             ConfigProject {
                 name: "blazeandcaves-advancements-pack".into(),
-                game_version: "1.21.4".into(),
+                game_version: expected_version,
                 loader: ModLoader::Datapack,
             },
             ConfigProject {
                 name: "faithful-32x".into(),
-                game_version: "1.21.4".into(),
+                game_version: expected_version,
                 loader: ModLoader::Minecraft,
             },
             ConfigProject {
                 name: "iris".into(),
-                game_version: "1.21.4".into(),
+                game_version: expected_version,
                 loader: ModLoader::Fabric,
             },
         ]);
@@ -205,22 +206,23 @@ mod tests {
     fn test_set_loader() {
         create_test_paths();
         let mut config = load_test_config();
+        let expected_version = MinecraftVersion::try_from("1.21.5").expect("Invalid");
         config.defaults.loader = ModLoader::NeoForge;
         let projects = config.projects();
         let expected_projects = Vec::from([
             ConfigProject {
                 name: "blazeandcaves-advancements-pack".into(),
-                game_version: "1.21.5".into(),
+                game_version: expected_version,
                 loader: ModLoader::Datapack,
             },
             ConfigProject {
                 name: "faithful-32x".into(),
-                game_version: "1.21.5".into(),
+                game_version: expected_version,
                 loader: ModLoader::Minecraft,
             },
             ConfigProject {
                 name: "iris".into(),
-                game_version: "1.21.5".into(),
+                game_version: expected_version,
                 loader: ModLoader::NeoForge,
             },
         ]);
@@ -235,20 +237,21 @@ mod tests {
         create_test_paths();
         let config = load_test_config();
         let projects = config.projects();
+        let expected_version = MinecraftVersion::try_from("1.21.5").expect("Invalid");
         let expected_projects = Vec::from([
             ConfigProject {
                 name: "blazeandcaves-advancements-pack".into(),
-                game_version: "1.21.5".into(),
+                game_version: expected_version,
                 loader: ModLoader::Datapack,
             },
             ConfigProject {
                 name: "faithful-32x".into(),
-                game_version: "1.21.5".into(),
+                game_version: expected_version,
                 loader: ModLoader::Minecraft,
             },
             ConfigProject {
                 name: "iris".into(),
-                game_version: "1.21.5".into(),
+                game_version: expected_version,
                 loader: ModLoader::Fabric,
             },
         ]);
@@ -263,15 +266,16 @@ mod tests {
         create_test_paths();
         let config = load_test_config();
         let projects = config.optional_projects();
+        let expected_version = MinecraftVersion::try_from("1.21.5").expect("Invalid");
         let expected_projects = Vec::from([
             ConfigProject {
                 name: "camps_castles_carriages".into(),
-                game_version: "1.21.5".into(),
+                game_version: expected_version,
                 loader: ModLoader::Fabric,
             },
             ConfigProject {
                 name: "lithium".into(),
-                game_version: "1.21.5".into(),
+                game_version: expected_version,
                 loader: ModLoader::Fabric,
             },
         ]);

@@ -6,7 +6,7 @@ use std::{
 use clap::Parser;
 use error::Result;
 
-use crate::types::ModLoader;
+use crate::types::{ModLoader, MinecraftVersion};
 
 mod config;
 mod error;
@@ -20,8 +20,8 @@ struct Cli {
     config: Option<PathBuf>,
 
     /// Override the default game version in the config
-    #[arg(long, short = 'v')]
-    game_version: Option<String>,
+    #[arg(long, short = 'v', value_parser = clap::value_parser!(MinecraftVersion))]
+    game_version: Option<MinecraftVersion>,
 
     /// Override the default mod loader in the config
     #[arg(long, short)]
@@ -48,8 +48,7 @@ fn load_config(cli: &Cli) -> Result<config::Config> {
         .unwrap_or_else(|| PathBuf::from("./mcmod.toml"));
     let mut mcmod = config::Config::loads(std::fs::read_to_string(config_path)?.as_str())?;
     cli.game_version
-        .as_ref()
-        .inspect(|x| mcmod.defaults.game_version = x.to_string());
+        .inspect(|x| mcmod.defaults.game_version = *x);
     cli.loader.inspect(|x| mcmod.defaults.loader = *x);
     Ok(mcmod)
 }
@@ -273,7 +272,7 @@ mod tests {
         );
         assert_eq!(
             cli.game_version,
-            Some(String::from("1.23.4")),
+            Some(MinecraftVersion::try_from("1.23.4").expect("Invalid")),
             "Cli shall read the input game version"
         );
         assert_eq!(
@@ -310,7 +309,7 @@ mod tests {
         );
         assert_eq!(
             cli.game_version,
-            Some(String::from("1.23.4")),
+            Some(MinecraftVersion::try_from("1.23.4").expect("Invalid")),
             "Cli shall read the input game version"
         );
         assert_eq!(

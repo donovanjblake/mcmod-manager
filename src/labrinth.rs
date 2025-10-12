@@ -1,5 +1,5 @@
 use crate::error::{Error, Result};
-use crate::types::{self, ModLoader};
+use crate::types::{self, MinecraftVersion, ModLoader};
 use reqwest::blocking as rb;
 
 const LABRINTH_URL: &str = "https://api.modrinth.com";
@@ -36,15 +36,14 @@ impl Client {
     }
 
     /// Get the latest version of a project for the target Minecraft version and mod loader
-    pub fn get_project_version<S, T>(
+    pub fn get_project_version<S>(
         &self,
         project: S,
-        game_version: T,
+        game_version: MinecraftVersion,
         loader: types::ModLoader,
     ) -> Result<ProjectVersion>
     where
         S: std::fmt::Display,
-        T: std::fmt::Display,
     {
         let params = [
             ("game_versions", format!("[\"{game_version}\"]")),
@@ -106,7 +105,7 @@ pub struct ProjectVersion {
     pub files: Vec<VersionFile>,
     pub date_published: String,
     pub loaders: Vec<ModLoader>,
-    pub game_versions: Vec<String>,
+    pub game_versions: Vec<MinecraftVersion>,
 }
 
 #[derive(serde::Deserialize, Debug, PartialEq, Eq)]
@@ -127,10 +126,10 @@ mod tests {
     #[test]
     fn test_get_project_version() {
         let client = Client::new();
-        let game_version = "1.21.2".to_string();
+        let game_version = MinecraftVersion::try_from("1.21.2").expect("Invalid");
         let loader = ModLoader::Minecraft;
         let version = client
-            .get_project_version("faithful-32x", &game_version, loader)
+            .get_project_version("faithful-32x", game_version, loader)
             .expect("Client should get a project version");
         if !version.game_versions.contains(&game_version) || !version.loaders.contains(&loader) {
             panic!("Client should get the latest project version for a specific target {version:?}")
@@ -140,10 +139,10 @@ mod tests {
     #[test]
     fn test_download_files() {
         let client = Client::new();
-        let game_version = "1.21.2".to_string();
+        let game_version = MinecraftVersion::try_from("1.21.2").expect("Invalid");
         let loader = ModLoader::Fabric;
         let version = client
-            .get_project_version("iris", &game_version, loader)
+            .get_project_version("iris", game_version, loader)
             .expect("Client should get a project version");
         if !version.game_versions.contains(&game_version) || !version.loaders.contains(&loader) {
             panic!("Client should get the latest project version for a specific target {version:?}")

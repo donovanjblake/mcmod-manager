@@ -76,8 +76,8 @@ pub enum ModLoader {
 }
 
 /// Minecraft version structure
-#[derive(serde::Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
-#[serde(try_from = "&str")]
+#[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
+#[serde(try_from = "String", into="String")]
 pub struct MinecraftVersion {
     /// Major version number
     major: u8,
@@ -87,29 +87,27 @@ pub struct MinecraftVersion {
     patch: Option<u8>,
 }
 
-impl serde::Serialize for MinecraftVersion {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(
-            format!(
-                "{}.{}.{}",
+impl std::fmt::Display for MinecraftVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}.{}.{}",
                 self.major,
                 self.minor,
                 self.patch
-                    .map_or_else(|| String::from("x"), |x| x.to_string())
-            )
-            .as_str(),
-        )
+                    .map_or_else(|| String::from("x"), |x| x.to_string()))
     }
 }
 
-impl TryFrom<&str> for MinecraftVersion {
+impl Into<String> for MinecraftVersion {
+    fn into(self) -> String {
+        format!("{self}")
+    }
+}
+
+impl TryFrom<String> for MinecraftVersion {
     type Error = Error;
-    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: String) -> std::result::Result<Self, Self::Error> {
         let parts: Vec<_> = value.split(".").collect();
-        if parts.len() != 3 {
+        if parts.len() < 2 || 3 < parts.len() {
             return Err(Error::InvalidMinecraftVersion(value.to_string()));
         }
         let parse_u8 = |s: &str| -> Result<u8> {
@@ -117,7 +115,7 @@ impl TryFrom<&str> for MinecraftVersion {
                 .map_err(|_| Error::InvalidMinecraftVersion(value.to_string()))
         };
         let (major, minor) = (parse_u8(parts[0])?, parse_u8(parts[1])?);
-        let patch = if parts[2].to_ascii_lowercase() == String::from('x') {
+        let patch = if parts.get(2).map_or("x", |x| *x).to_ascii_lowercase() == String::from("x") {
             None
         } else {
             Some(parse_u8(parts[2])?)
@@ -127,5 +125,11 @@ impl TryFrom<&str> for MinecraftVersion {
             minor,
             patch,
         })
+    }
+}
+
+impl From<&str> for MinecraftVersion {
+    fn from(value: &str) -> Self {
+        MinecraftVersion::try_from(value.to_string()).expect("Invalid")
     }
 }
