@@ -54,28 +54,28 @@ fn load_config(cli: &Cli) -> Result<config::Config> {
 }
 
 /// Collect an item by its mod link.
-fn _collect_modlink(
+fn collect_modlink(
     client: &labrinth::Client,
     moddb: &mut ModDB,
     mod_link: &ModLink,
 ) -> Result<ModLink> {
     match &mod_link {
-        types::ModLink::ProjectId(x) => _collect_project_by_id(client, moddb, x).map(|x| x.into()),
+        types::ModLink::ProjectId(x) => collect_project_by_id(client, moddb, x).map(|x| x.into()),
         types::ModLink::ProjectSlug(x) => {
-            _collect_project_by_slug(client, moddb, x).map(|x| x.into())
+            collect_project_by_slug(client, moddb, x).map(|x| x.into())
         }
-        types::ModLink::VersionId(x) => _collect_version(client, moddb, x).map(|x| x.into()),
+        types::ModLink::VersionId(x) => collect_version(client, moddb, x).map(|x| x.into()),
     }
 }
 
 /// Collect a project and return its id
-fn _collect_project_by_id(
+fn collect_project_by_id(
     client: &labrinth::Client,
     moddb: &mut ModDB,
     project_id: &ProjectId,
 ) -> Result<ProjectId> {
     if let Some(project) = &mut moddb.get_project_by_id(project_id) {
-        return Ok(project.project_id.clone().into());
+        return Ok(project.project_id.clone());
     }
     let project = client.get_project(project_id.as_str())?;
     let project_id = project.project_id.clone();
@@ -84,7 +84,7 @@ fn _collect_project_by_id(
 }
 
 /// Collect a project and return its id
-fn _collect_project_by_slug(
+fn collect_project_by_slug(
     client: &labrinth::Client,
     moddb: &mut ModDB,
     project_slug: &ProjectSlug,
@@ -99,7 +99,7 @@ fn _collect_project_by_slug(
 }
 
 /// Collect a version and return its id
-fn _collect_version(
+fn collect_version(
     client: &labrinth::Client,
     moddb: &mut types::ModDB,
     version_id: &VersionId,
@@ -114,14 +114,14 @@ fn _collect_version(
 }
 
 /// Collect the latest version of a project and return its id
-fn _collect_latest_version(
+fn collect_latest_version(
     client: &labrinth::Client,
     moddb: &mut types::ModDB,
     project: &config::ConfigProject,
 ) -> Result<VersionId> {
     let project_id = match &mut moddb.get_project_by_slug(&project.name) {
         Some(x) => x.project_id.clone(),
-        None => _collect_project_by_slug(client, moddb, &project.name)?,
+        None => collect_project_by_slug(client, moddb, &project.name)?,
     };
     let version_id = match moddb
         .get_preferred_by_id(&project_id)
@@ -130,7 +130,7 @@ fn _collect_latest_version(
         Some(x) => x,
         None => {
             let version = client.get_project_version_latest(
-                &project.name.as_str(),
+                project.name.as_str(),
                 project.game_version,
                 project.loader,
             )?;
@@ -144,7 +144,7 @@ fn _collect_latest_version(
 }
 
 /// Collect all the dependencies of a version. If one is missing, they are not collected.
-fn _collect_dependencies(
+fn collect_dependencies(
     client: &labrinth::Client,
     moddb: &mut types::ModDB,
     version_id: &VersionId,
@@ -163,10 +163,10 @@ fn _collect_dependencies(
         }
         let collected = match dep {
             ModLink::ProjectId(_x) => {
-                todo!("How to select a version?");
-                // _collect_project(client, moddb, x).map(|y| ModLink::ProjectId(y))
+                todo!("How to select a project version?");
+                // collect_project(client, moddb, x).map(|y| ModLink::ProjectId(y))
             }
-            ModLink::VersionId(x) => _collect_version(client, moddb, x),
+            ModLink::VersionId(x) => collect_version(client, moddb, x),
             ModLink::ProjectSlug(_) => {
                 unimplemented!("A dependency will never be a project slug");
             }
@@ -177,7 +177,7 @@ fn _collect_dependencies(
             }
         }
         let collected = collected?;
-        let deps_res = _collect_dependencies(client, moddb, &collected);
+        let deps_res = collect_dependencies(client, moddb, &collected);
         let collected = ModLink::from(collected);
         let mut collected = match deps_res {
             Ok(mut x) => {
@@ -206,19 +206,19 @@ fn collect_required_versions(
     let mut versions = Vec::<ModLink>::new();
     for project in mcmod.projects() {
         println!("Collecting {}", project.name);
-        let mut collected = collect_version(client, moddb, &project)?;
+        let mut collected = collect_project_version(client, moddb, &project)?;
         versions.append(&mut collected);
     }
     Ok(versions)
 }
 
 /// Get a version and all of its dependencies
-fn collect_version(
+fn collect_project_version(
     client: &labrinth::Client,
     moddb: &mut ModDB,
     project: &config::ConfigProject,
 ) -> Result<Vec<ModLink>> {
-    let base_id = match _collect_latest_version(client, moddb, project) {
+    let base_id = match collect_latest_version(client, moddb, project) {
         Ok(x) => {
             println!("  Found version {x}");
             x
@@ -228,7 +228,7 @@ fn collect_version(
             return Err(e);
         }
     };
-    let mut deps = match _collect_dependencies(client, moddb, &base_id) {
+    let mut deps = match collect_dependencies(client, moddb, &base_id) {
         Ok(x) => {
             if !x.is_empty() {
                 println!("  Found {} dependencies", x.len());
@@ -254,7 +254,7 @@ fn collect_optional_versions(
     let mut versions = Vec::<ModLink>::new();
     for project in mcmod.optional_projects() {
         println!("Collecting optional {}", project.name);
-        let mut collected = match collect_version(client, moddb, &project) {
+        let mut collected = match collect_project_version(client, moddb, &project) {
             Ok(x) => x,
             Err(_) => continue,
         };

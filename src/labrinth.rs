@@ -139,15 +139,15 @@ struct Project {
     pub loaders: Vec<ModLoader>,
 }
 
-impl Into<types::ModProject> for Project {
-    fn into(self) -> types::ModProject {
-        types::ModProject {
-            project_id: self.project_id.into(),
-            name: self.title,
-            slug: self.slug.into(),
-            version_ids: self.version_ids.into_iter().map(|x| x.into()).collect(),
-            game_versions: self.game_versions,
-            loaders: self.loaders,
+impl From<Project> for types::ModProject {
+    fn from(value: Project) -> Self {
+        Self {
+            project_id: value.project_id.into(),
+            name: value.title,
+            slug: value.slug.into(),
+            version_ids: value.version_ids.into_iter().map(|x| x.into()).collect(),
+            game_versions: value.game_versions,
+            loaders: value.loaders,
         }
     }
 }
@@ -165,21 +165,21 @@ struct Version {
     pub files: Vec<FileLink>,
 }
 
-impl Into<types::ModVersion> for Version {
-    fn into(self) -> types::ModVersion {
-        types::ModVersion {
-            project_id: self.project_id.into(),
-            version_id: self.version_id.into(),
-            name: self.name,
-            game_versions: self.game_versions,
-            loaders: self.loaders,
-            dependencies: self
+impl From<Version> for types::ModVersion {
+    fn from(value: Version) -> Self {
+        Self {
+            project_id: value.project_id.into(),
+            version_id: value.version_id.into(),
+            name: value.name,
+            game_versions: value.game_versions,
+            loaders: value.loaders,
+            dependencies: value
                 .dependencies
                 .into_iter()
                 .filter_map(Dependency::into_link)
                 .collect(),
-            files: self.files.into_iter().map(FileLink::into).collect(),
-            date_published: self.date_published.0,
+            files: value.files.into_iter().map(FileLink::into).collect(),
+            date_published: value.date_published.0,
         }
     }
 }
@@ -193,10 +193,14 @@ struct Dependency {
 
 impl Dependency {
     fn into_link(self) -> Option<types::ModLink> {
+        if !matches!(self.dependency_type, DependencyKind::Required) {
+            return None;
+        }
+        #[allow(clippy::manual_map)]
         if let Some(version_id) = self.version_id {
             Some(types::ModLink::VersionId(version_id.into()))
         } else if let Some(project_id) = self.project_id {
-            Some(types::ModLink::VersionId(project_id.into()))
+            Some(types::ModLink::ProjectId(project_id.into()))
         } else {
             None
         }
@@ -218,11 +222,11 @@ struct FileLink {
     pub filename: String,
 }
 
-impl Into<types::ModFile> for FileLink {
-    fn into(self) -> types::ModFile {
-        types::ModFile {
-            url: self.url,
-            name: self.filename,
+impl From<FileLink> for types::ModFile {
+    fn from(value: FileLink) -> Self {
+        Self {
+            url: value.url,
+            name: value.filename,
         }
     }
 }

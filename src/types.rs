@@ -1,4 +1,4 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use crate::error::{Error, Result};
 
@@ -243,7 +243,7 @@ impl TryFrom<String> for MinecraftVersion {
                     patch,
                 })
             }
-            2 | 3 | 4 => {
+            2..=4 => {
                 let (major, minor) = (parse_u8(parts[0])?, parse_u8(parts[1])?);
                 let (patch, suffix) = match (parts.get(2), parts.get(3)) {
                     (None, None) => (None, MinecraftReleaseSuffix::None),
@@ -271,9 +271,7 @@ impl TryFrom<String> for MinecraftVersion {
                     suffix,
                 })
             }
-            _ => {
-                return Err(Error::InvalidMinecraftVersion(value.to_string()));
-            }
+            _ => Err(Error::InvalidMinecraftVersion(value.to_string())),
         }
     }
 }
@@ -362,13 +360,7 @@ impl ModDB {
     /// Get the preferred version of a project by its id
     pub fn get_preferred_by_id(&self, project_id: &ProjectId) -> Option<&ModVersion> {
         self.project_versions
-            .get(&project_id)
-            .and_then(|x| self.versions.get(x))
-    }
-    /// Get the preferred version of a project by its slug
-    pub fn get_preferred_by_slug(&self, project_slug: &ProjectSlug) -> Option<&ModVersion> {
-        self.get_project_by_slug(project_slug)
-            .and_then(|x| self.project_versions.get(&x.project_id))
+            .get(project_id)
             .and_then(|x| self.versions.get(x))
     }
 }
@@ -413,9 +405,9 @@ impl From<String> for ProjectId {
     }
 }
 
-impl Into<String> for ProjectId {
-    fn into(self) -> String {
-        self.0
+impl From<ProjectId> for String {
+    fn from(value: ProjectId) -> Self {
+        value.0
     }
 }
 
@@ -446,9 +438,9 @@ impl From<String> for ProjectSlug {
     }
 }
 
-impl Into<String> for ProjectSlug {
-    fn into(self) -> String {
-        self.0
+impl From<ProjectSlug> for String {
+    fn from(value: ProjectSlug) -> Self {
+        value.0
     }
 }
 
@@ -473,9 +465,9 @@ impl From<String> for VersionId {
     }
 }
 
-impl Into<String> for VersionId {
-    fn into(self) -> String {
-        self.0
+impl From<VersionId> for String {
+    fn from(value: VersionId) -> Self {
+        value.0
     }
 }
 
