@@ -9,13 +9,17 @@ pub enum Error {
     #[allow(dead_code)]
     JsonParse(serde_json::Error),
     #[allow(dead_code)]
+    ChronoParse(chrono::ParseError),
+    #[allow(dead_code)]
     Request(reqwest::Error),
     #[allow(dead_code)]
-    ResponseEmpty { url: String },
+    VersionNotFound { project: String },
     #[allow(dead_code)]
     InvalidLoader(String),
     #[allow(dead_code)]
     InvalidMinecraftVersion(String),
+    #[allow(dead_code)]
+    LocalCacheMiss { key: String, msg: String },
 }
 
 impl std::fmt::Display for Error {
@@ -24,10 +28,12 @@ impl std::fmt::Display for Error {
             Error::IO(error) => write!(f, "IO: {error:?}"),
             Error::TomlParse(error) => write!(f, "TOML: {error:?}"),
             Error::JsonParse(error) => write!(f, "JSON: {error:?}"),
+            Error::ChronoParse(error) => write!(f, "chrono: {error:?}"),
             Error::Request(error) => write!(f, "Request: {error:?}"),
-            Error::ResponseEmpty { url } => write!(f, "Response emptry for {url:?}"),
+            Error::VersionNotFound { project: url } => write!(f, "Response emptry for {url:?}"),
             Error::InvalidLoader(x) => write!(f, "Invalid loader {x:?}"),
             Error::InvalidMinecraftVersion(x) => write!(f, "Invalid minecraft version {x:?}"),
+            Error::LocalCacheMiss { key, msg } => write!(f, "Not in local cache: {msg}: {key:?}"),
         }
     }
 }
@@ -59,5 +65,11 @@ impl From<reqwest::Error> for Error {
 impl From<serde_json::Error> for Error {
     fn from(value: serde_json::Error) -> Self {
         Error::JsonParse(value)
+    }
+}
+
+impl From<chrono::ParseError> for Error {
+    fn from(value: chrono::ParseError) -> Self {
+        Error::ChronoParse(value)
     }
 }

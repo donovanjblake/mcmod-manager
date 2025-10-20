@@ -24,7 +24,7 @@ impl Client {
 
     fn get_form<U, P>(&self, url: U, params: &P) -> Result<rb::Response>
     where
-        U: reqwest::IntoUrl + Clone,
+        U: reqwest::IntoUrl,
         P: serde::Serialize + ?Sized,
     {
         Ok(self
@@ -35,61 +35,66 @@ impl Client {
             .error_for_status()?)
     }
 
-    /// Get the latest version of a project for the target Minecraft version and mod loader
-    pub fn get_project_version<S>(
+    /// Get a project from the database
+    pub fn get_project(&self, project: &str) -> Result<types::ModProject> {
+        let response = self.get(format!("{LABRINTH_URL}/v2/project/{project}"))?;
+        let project = serde_json::from_str::<Project>(response.text()?.as_str())?;
+        Ok(project.into())
+    }
+
+    /// Get a version from the database
+    pub fn get_version(&self, version: &str) -> Result<types::ModVersion> {
+        let response = self.get(format!("{LABRINTH_URL}/v2/version/{version}"))?;
+        let version = serde_json::from_str::<Version>(response.text()?.as_str())?;
+        Ok(version.into())
+    }
+
+    /// Get the project versions matching the given query
+    pub fn get_project_versions(
         &self,
-        project: S,
-        game_version: MinecraftVersion,
-        loader: types::ModLoader,
-    ) -> Result<ProjectVersion>
-    where
-        S: std::fmt::Display,
-    {
+        project: &str,
+        game_versions: &[MinecraftVersion],
+        loaders: &[types::ModLoader],
+    ) -> Result<Vec<types::ModVersion>> {
+        let game_versions = game_versions
+            .iter()
+            .map(|x| format!("\"{x}\""))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let loaders = loaders
+            .iter()
+            .map(|x| format!("\"{x}\""))
+            .collect::<Vec<_>>()
+            .join(", ");
         let params = [
-            ("game_versions", format!("[\"{game_version}\"]")),
-            ("loaders", format!("[\"{loader}\"]")),
+            ("game_versions", format!("[{game_versions}]")),
+            ("loaders", format!("[{loaders}]")),
         ];
         let response = self.get_form(
             format!("{LABRINTH_URL}/v2/project/{project}/version"),
             &params,
         )?;
-        let url = response.url().as_str().to_owned();
-        let versions = serde_json::from_str::<Vec<ProjectVersion>>(response.text()?.as_str())?;
-        let version = versions
-            .into_iter()
-            .max_by(|lhs, rhs| lhs.date_published.cmp(&rhs.date_published))
-            .ok_or_else(|| Error::ResponseEmpty { url })?;
-        Ok(version)
+        let versions = serde_json::from_str::<Vec<Version>>(response.text()?.as_str())?;
+        Ok(versions.into_iter().map(Version::into).collect())
     }
 
-    /// Get all the depencencies of the given project version
-    pub fn get_version_dependencies(
+    /// Get the latest version of a project for the target Minecraft version and mod loader
+    pub fn get_project_version_latest(
         &self,
-        version: &ProjectVersion,
+        project: &str,
         game_version: MinecraftVersion,
         loader: types::ModLoader,
-    ) -> Result<Vec<ProjectVersion>> {
-        let mut result = Vec::<ProjectVersion>::new();
-        for dependency in &version.dependencies {
-            if dependency.kind != DependencyKind::Required {
-                continue;
-            }
-            if let Some(version_id) = &dependency.version_id {
-                let response = self.get(format!("{LABRINTH_URL}/v2/version/{version_id}"))?;
-                let version = serde_json::from_str::<ProjectVersion>(response.text()?.as_str())?;
-                result.push(version);
-            } else if let Some(project_id) = &dependency.project_id {
-                let version = self.get_project_version(project_id, game_version, loader)?;
-                result.push(version);
-            } else {
-                todo!("Give some kind of message for filename kinds")
-            }
-        }
-        Ok(result)
+    ) -> Result<types::ModVersion> {
+        self.get_project_versions(project, &[game_version], &[loader])?
+            .into_iter()
+            .max_by(|x, y| x.date_published.cmp(&y.date_published))
+            .ok_or_else(|| Error::VersionNotFound {
+                project: project.to_string(),
+            })
     }
 
     /// Download a single file
-    pub fn download_file(&self, version_file: &VersionFile) -> Result<Vec<u8>> {
+    pub fn download_file(&self, version_file: &types::ModFile) -> Result<Vec<u8>> {
         Ok(self
             .get(version_file.url.clone())?
             .bytes()
@@ -97,11 +102,11 @@ impl Client {
     }
 
     /// Download the files of a version into a list of tuples of the file info and the bytes
-    pub fn download_version_files<'pv>(
+    pub fn download_version_files<'a>(
         &self,
-        version: &'pv ProjectVersion,
-    ) -> Result<Vec<(&'pv VersionFile, Vec<u8>)>> {
-        let mut result = Vec::<(&'pv VersionFile, Vec<u8>)>::new();
+        version: &'a types::ModVersion,
+    ) -> Result<Vec<(&'a types::ModFile, Vec<u8>)>> {
+        let mut result = Vec::<(&'a types::ModFile, Vec<u8>)>::new();
         for version_file in &version.files {
             result.push((version_file, self.download_file(version_file)?))
         }
@@ -122,41 +127,117 @@ impl Client {
     }
 }
 
-#[derive(serde::Deserialize, Debug, PartialEq, Eq)]
-pub struct ProjectVersion {
-    // #[serde(rename = "id")]
-    // pub version_id: String,
-    // pub project_id: String,
-    pub name: String,
-    pub files: Vec<VersionFile>,
-    pub date_published: String,
-    pub loaders: Vec<ModLoader>,
+#[derive(serde::Deserialize)]
+struct Project {
+    pub slug: String,
+    pub title: String,
+    #[serde(rename = "id")]
+    pub project_id: String,
+    #[serde(rename = "versions")]
+    pub version_ids: Vec<String>,
     pub game_versions: Vec<MinecraftVersion>,
-    pub dependencies: Vec<VersionDependency>,
+    pub loaders: Vec<ModLoader>,
 }
 
-#[derive(serde::Deserialize, Debug, PartialEq, Eq)]
-pub struct VersionFile {
-    pub url: String,
-    pub filename: String,
+impl Into<types::ModProject> for Project {
+    fn into(self) -> types::ModProject {
+        types::ModProject {
+            project_id: self.project_id.into(),
+            name: self.title,
+            slug: self.slug.into(),
+            version_ids: self.version_ids.into_iter().map(|x| x.into()).collect(),
+            game_versions: self.game_versions,
+            loaders: self.loaders,
+        }
+    }
 }
 
-#[derive(serde::Deserialize, Debug, PartialEq, Eq)]
-pub struct VersionDependency {
-    pub project_id: Option<String>,
+#[derive(serde::Deserialize)]
+struct Version {
+    pub name: String,
+    #[serde(rename = "id")]
+    pub version_id: String,
+    pub project_id: String,
+    pub dependencies: Vec<Dependency>,
+    pub game_versions: Vec<MinecraftVersion>,
+    pub date_published: DatePublished,
+    pub loaders: Vec<ModLoader>,
+    pub files: Vec<FileLink>,
+}
+
+impl Into<types::ModVersion> for Version {
+    fn into(self) -> types::ModVersion {
+        types::ModVersion {
+            project_id: self.project_id.into(),
+            version_id: self.version_id.into(),
+            name: self.name,
+            game_versions: self.game_versions,
+            loaders: self.loaders,
+            dependencies: self
+                .dependencies
+                .into_iter()
+                .filter_map(Dependency::into_link)
+                .collect(),
+            files: self.files.into_iter().map(FileLink::into).collect(),
+            date_published: self.date_published.0,
+        }
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct Dependency {
     pub version_id: Option<String>,
-    pub filename: Option<String>,
-    #[serde(rename = "dependency_type")]
-    pub kind: DependencyKind,
+    pub project_id: Option<String>,
+    pub dependency_type: DependencyKind,
+}
+
+impl Dependency {
+    fn into_link(self) -> Option<types::ModLink> {
+        if let Some(version_id) = self.version_id {
+            Some(types::ModLink::VersionId(version_id.into()))
+        } else if let Some(project_id) = self.project_id {
+            Some(types::ModLink::VersionId(project_id.into()))
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(serde::Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
-pub enum DependencyKind {
+enum DependencyKind {
     Required,
     Optional,
     Incompatible,
     Embedded,
+}
+
+#[derive(serde::Deserialize)]
+struct FileLink {
+    pub url: String,
+    pub filename: String,
+}
+
+impl Into<types::ModFile> for FileLink {
+    fn into(self) -> types::ModFile {
+        types::ModFile {
+            url: self.url,
+            name: self.filename,
+        }
+    }
+}
+
+#[derive(serde::Deserialize)]
+#[serde(try_from = "String")]
+struct DatePublished(chrono::NaiveDateTime);
+
+impl TryFrom<String> for DatePublished {
+    type Error = Error;
+    fn try_from(value: String) -> std::result::Result<Self, Self::Error> {
+        Ok(Self(
+            chrono::DateTime::parse_from_rfc3339(value.as_str())?.naive_utc(),
+        ))
+    }
 }
 
 #[derive(serde::Deserialize, Debug)]
@@ -174,7 +255,7 @@ mod tests {
         let game_version = MinecraftVersion::from("1.21.2");
         let loader = ModLoader::Minecraft;
         let version = client
-            .get_project_version("faithful-32x", game_version, loader)
+            .get_project_version_latest("faithful-32x", game_version, loader)
             .expect("Client should get a project version");
         if !version.game_versions.contains(&game_version) || !version.loaders.contains(&loader) {
             panic!("Client should get the latest project version for a specific target {version:?}")
@@ -187,7 +268,7 @@ mod tests {
         let game_version = MinecraftVersion::from("1.21.2");
         let loader = ModLoader::Fabric;
         let version = client
-            .get_project_version("iris", game_version, loader)
+            .get_project_version_latest("iris", game_version, loader)
             .expect("Client should get a project version");
         if !version.game_versions.contains(&game_version) || !version.loaders.contains(&loader) {
             panic!("Client should get the latest project version for a specific target {version:?}")

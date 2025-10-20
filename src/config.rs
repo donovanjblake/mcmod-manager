@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use crate::error::Result;
-use crate::types::{MinecraftVersion, ModLoader};
+use crate::types::{MinecraftVersion, ModLoader, ProjectSlug};
 
 /// Configuration containing paths and projects to use
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
@@ -37,7 +37,7 @@ impl Config {
         for (name, project) in &self.projects {
             result.push(project.resolve(name, &self.defaults))
         }
-        result.sort_by_key(|p| p.name.clone());
+        result.sort_by(|l, r| l.name.as_str().cmp(r.name.as_str()));
         result
     }
 
@@ -47,7 +47,7 @@ impl Config {
         for (name, project) in &self.optional_projects {
             result.push(project.resolve(name, &self.defaults))
         }
-        result.sort_by_key(|p| p.name.clone());
+        result.sort_by(|l, r| l.name.as_str().cmp(r.name.as_str()));
         result
     }
 }
@@ -81,8 +81,8 @@ fn default_temp() -> PathBuf {
 /// Project information
 #[derive(Debug, PartialEq, Eq)]
 pub struct ConfigProject {
-    /// Name (or id) of the project
-    pub name: String,
+    /// Name of the project
+    pub name: ProjectSlug,
 
     /// Target Minecraft version
     pub game_version: MinecraftVersion,
@@ -141,7 +141,7 @@ impl OptionConfigProject {
     /// Return a project populated with defaults instead of Nones
     pub fn resolve(&self, name: &String, defaults: &ConfigDefaults) -> ConfigProject {
         ConfigProject {
-            name: name.to_owned(),
+            name: name.to_owned().into(),
             game_version: self
                 .game_version
                 .as_ref()
