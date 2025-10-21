@@ -482,8 +482,8 @@ pub struct ModProject {
     pub project_id: ProjectId,
     pub name: String,
     pub slug: ProjectSlug,
-    pub version_ids: Vec<VersionId>,
-    pub game_versions: Vec<MinecraftVersion>,
+    // pub version_ids: Vec<VersionId>,
+    // pub game_versions: Vec<MinecraftVersion>,
     pub loaders: Vec<ModLoader>,
 }
 
@@ -492,6 +492,7 @@ pub struct ModVersion {
     pub project_id: ProjectId,
     pub version_id: VersionId,
     pub name: String,
+    #[cfg(test)]
     pub game_versions: Vec<MinecraftVersion>,
     pub loaders: Vec<ModLoader>,
     pub files: Vec<ModFile>,

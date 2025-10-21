@@ -1,5 +1,4 @@
 use std::{
-    arch::x86_64::_MM_EXCEPT_DENORM,
     fs,
     path::{Path, PathBuf},
 };
@@ -7,7 +6,7 @@ use std::{
 use clap::Parser;
 use error::{Error, Result};
 
-use crate::{config::ConfigProject, types::*};
+use crate::types::*;
 
 mod config;
 mod error;
@@ -52,21 +51,6 @@ fn load_config(cli: &Cli) -> Result<config::Config> {
         .inspect(|x| mcmod.defaults.game_version = *x);
     cli.loader.inspect(|x| mcmod.defaults.loader = *x);
     Ok(mcmod)
-}
-
-/// Collect an item by its mod link.
-fn collect_modlink(
-    client: &labrinth::Client,
-    moddb: &mut ModDB,
-    mod_link: &ModLink,
-) -> Result<ModLink> {
-    match &mod_link {
-        types::ModLink::ProjectId(x) => collect_project_by_id(client, moddb, x).map(|x| x.into()),
-        types::ModLink::ProjectSlug(x) => {
-            collect_project_by_slug(client, moddb, x).map(|x| x.into())
-        }
-        types::ModLink::VersionId(x) => collect_version(client, moddb, x).map(|x| x.into()),
-    }
 }
 
 /// Collect a project and return its id
@@ -149,30 +133,46 @@ fn collect_project_version(
     client: &labrinth::Client,
     moddb: &mut types::ModDB,
     mcmod: &config::Config,
-    project_id: &ProjectId
+    project_id: &ProjectId,
 ) -> Result<VersionId> {
     let pid = collect_project_by_id(client, moddb, project_id)?;
     let mod_project = moddb.get_project_by_id(&pid).expect("weewoo");
     if mod_project.loaders.contains(&mcmod.defaults.loader) {
-        collect_config_project(client, moddb, &config::ConfigProject {
-            name: ProjectSlug::from(mod_project.slug.clone()),
-            game_version: mcmod.defaults.game_version,
-            loader: mcmod.defaults.loader
-        })
+        collect_config_project(
+            client,
+            moddb,
+            &config::ConfigProject {
+                name: mod_project.slug.clone(),
+                game_version: mcmod.defaults.game_version,
+                loader: mcmod.defaults.loader,
+            },
+        )
     } else if mod_project.loaders.contains(&ModLoader::Minecraft) {
-        collect_config_project(client, moddb, &config::ConfigProject {
-            name: ProjectSlug::from(mod_project.slug.clone()),
-            game_version: mcmod.defaults.game_version,
-            loader: ModLoader::Minecraft,
-        })
+        collect_config_project(
+            client,
+            moddb,
+            &config::ConfigProject {
+                name: mod_project.slug.clone(),
+                game_version: mcmod.defaults.game_version,
+                loader: ModLoader::Minecraft,
+            },
+        )
     } else if mod_project.loaders.contains(&ModLoader::Datapack) {
-        collect_config_project(client, moddb, &config::ConfigProject {
-            name: ProjectSlug::from(mod_project.slug.clone()),
-            game_version: mcmod.defaults.game_version,
-            loader: ModLoader::Datapack,
-        })
+        collect_config_project(
+            client,
+            moddb,
+            &config::ConfigProject {
+                name: mod_project.slug.clone(),
+                game_version: mcmod.defaults.game_version,
+                loader: ModLoader::Datapack,
+            },
+        )
     } else {
-        todo!("No idea how to resolve this one {}, {:?}", mod_project.slug, mod_project.loaders)
+        todo!(
+            "No idea how to resolve this one {}, {:?}",
+            mod_project.slug,
+            mod_project.loaders
+        )
     }
 }
 
@@ -196,9 +196,7 @@ fn collect_dependencies(
             continue;
         }
         let collected = match dep {
-            ModLink::ProjectId(x) => {
-                collect_project_version(client, moddb, mcmod, x)
-            }
+            ModLink::ProjectId(x) => collect_project_version(client, moddb, mcmod, x),
             ModLink::VersionId(x) => collect_version(client, moddb, x),
             ModLink::ProjectSlug(_) => {
                 unimplemented!("A dependency will never be a project slug");
@@ -317,18 +315,17 @@ fn init_temp(tmp: &PathBuf) -> std::io::Result<PathBuf> {
 
 /// Download the files from the given versions into the given directory, deleting any previous files
 /// in the directory.
-fn download_files(
-    client: &labrinth::Client,
-    moddb: &ModDB,
-    path: &Path,
-) -> Result<()> {
+fn download_files(client: &labrinth::Client, moddb: &ModDB, path: &Path) -> Result<()> {
     new_empty_dir(&path.to_path_buf()).expect("Failure to empty temp sub-directory");
     for dir in ["mods", "resourcepacks", "datapacks", "shaderpacks"] {
         let dir = path.join(dir);
         new_empty_dir(&dir).expect("Failure to empty temp sub-directory");
     }
     for version in moddb.get_versions() {
-        let project_name = moddb.get_project_by_id(&version.project_id).map(|x| x.name.clone()).unwrap_or_else(|| "Project not cached!".into());
+        let project_name = moddb
+            .get_project_by_id(&version.project_id)
+            .map(|x| x.name.clone())
+            .unwrap_or_else(|| "Project not cached!".into());
         println!("Downloading {} ({})", version.name, project_name);
         let files = client.download_version_files(version)?;
         let folder = match version.loaders.first() {

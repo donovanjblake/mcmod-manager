@@ -133,9 +133,9 @@ struct Project {
     pub title: String,
     #[serde(rename = "id")]
     pub project_id: String,
-    #[serde(rename = "versions")]
-    pub version_ids: Vec<String>,
-    pub game_versions: Vec<MinecraftVersion>,
+    // #[serde(rename = "versions")]
+    // pub version_ids: Vec<String>,
+    // pub game_versions: Vec<MinecraftVersion>,
     pub loaders: Vec<ModLoader>,
 }
 
@@ -145,8 +145,8 @@ impl From<Project> for types::ModProject {
             project_id: value.project_id.into(),
             name: value.title,
             slug: value.slug.into(),
-            version_ids: value.version_ids.into_iter().map(|x| x.into()).collect(),
-            game_versions: value.game_versions,
+            // version_ids: value.version_ids.into_iter().map(|x| x.into()).collect(),
+            // game_versions: value.game_versions,
             loaders: value.loaders,
         }
     }
@@ -159,6 +159,7 @@ struct Version {
     pub version_id: String,
     pub project_id: String,
     pub dependencies: Vec<Dependency>,
+    #[cfg(test)]
     pub game_versions: Vec<MinecraftVersion>,
     pub date_published: DatePublished,
     pub loaders: Vec<ModLoader>,
@@ -171,6 +172,7 @@ impl From<Version> for types::ModVersion {
             project_id: value.project_id.into(),
             version_id: value.version_id.into(),
             name: value.name,
+            #[cfg(test)]
             game_versions: value.game_versions,
             loaders: value.loaders,
             dependencies: value
