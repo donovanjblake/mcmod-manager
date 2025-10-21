@@ -600,4 +600,22 @@ mod tests {
         check_children_count(&minecraft.join("mods"), 3);
         check_children_count(&minecraft.join("resourcepacks"), 1);
     }
+
+    #[test]
+    fn test_action_full_fat() {
+        create_test_paths();
+        let mcmod = config::Config::loads(
+            fs::read_to_string("examples/mcmod.toml")
+                .expect("Failure to read test config")
+                .as_str(),
+        )
+        .expect("Failure to parse test config");
+        let client = labrinth::Client::new();
+        let mut moddb = ModDB::default();
+        let _versions = collect_versions(&client, &mut moddb, &mcmod).expect("Failure to collect versions");
+        let temp = init_temp(&mcmod.paths.temp).expect("Failed to initialize temp path");
+        download_files(&client, &moddb, &temp).expect("Failure to download files");
+        let minecraft = &mcmod.paths.dot_minecraft;
+        install_files(&temp, &minecraft).expect("Failure to install files");
+    }
 }
