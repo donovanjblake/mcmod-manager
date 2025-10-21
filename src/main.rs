@@ -12,6 +12,7 @@ mod config;
 mod error;
 mod labrinth;
 mod types;
+mod solver;
 
 /// The options passed to the program through the command line interface
 #[derive(Parser, Debug)]
