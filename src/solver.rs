@@ -1,17 +1,68 @@
-use crate::error::{Result, Error};
 use crate::config;
-use crate::types::{self, ProjectId, ProjectSlug, VersionId, ModLoader, ModLink};
+use crate::error::{Error, Result};
 use crate::labrinth;
-
+use crate::types::{self, ModLink, ModLoader, ProjectId, ProjectSlug, VersionId};
 
 /// Collects all mods and their dependencies according to the config
 pub struct ModSolver<'a> {
-    client: &'a labrinth::Client,
+    client: labrinth::Client,
     mod_config: &'a config::Config,
-    mod_db: &'a mut types::ModDB,
+    mod_db: types::ModDB,
 }
 
 impl<'a> ModSolver<'a> {
+    /// Construct a new mod solver for a config
+    pub fn new(mod_config: &'a config::Config) -> Self {
+        ModSolver {
+            client: labrinth::Client::new(),
+            mod_config,
+            mod_db: types::ModDB::default(),
+        }
+    }
+
+    /// Solve all the dependencies of the config, consuming self
+    pub fn solve(mut self) -> Result<types::ModDB> {
+        self.collect_required_projects()?;
+        self.collect_optional_projects();
+        Ok(self.mod_db)
+    }
+
+    /// Collect all the required versions from the config
+    fn collect_required_projects(&mut self) -> Result<Vec<VersionId>> {
+        let mut versions = Vec::<VersionId>::new();
+        for project in self.mod_config.projects() {
+            let mut collected = self.collect_project_and_dependencies(&project)?;
+            versions.append(&mut collected);
+        }
+        Ok(versions)
+    }
+
+    /// Collect all the optional versions from the config
+    fn collect_optional_projects(&mut self) -> Vec<VersionId> {
+        let mut versions = Vec::<VersionId>::new();
+        for project in self.mod_config.optional_projects() {
+            let mut collected = match self.collect_project_and_dependencies(&project) {
+                Ok(x) => x,
+                Err(_) => continue,
+            };
+            versions.append(&mut collected);
+        }
+        versions
+    }
+
+    /// Collect a config project and its dependencies
+    fn collect_project_and_dependencies(
+        &mut self,
+        project: &config::ConfigProject,
+    ) -> Result<Vec<VersionId>> {
+        let base_id = self.collect_config_project(project)?;
+        let mut deps = self.collect_dependencies(&base_id).inspect_err(|_| {
+            self.mod_db
+                .remove(&types::ModLink::VersionId(base_id.clone()))
+        })?;
+        deps.push(base_id);
+        Ok(deps)
+    }
 
     /// Collect one project by its id
     fn collect_project_by_id(&mut self, project_id: &ProjectId) -> Result<ProjectId> {
@@ -52,7 +103,8 @@ impl<'a> ModSolver<'a> {
             Some(x) => x.project_id.clone(),
             None => self.collect_project_by_slug(&project.name)?,
         };
-        let version_id = match self.mod_db
+        let version_id = match self
+            .mod_db
             .get_preferred_by_id(&project_id)
             .map(|x| x.version_id.clone())
         {
@@ -65,7 +117,8 @@ impl<'a> ModSolver<'a> {
                 )?;
                 let version_id = version.version_id.clone();
                 self.mod_db.add_version(version);
-                self.mod_db.set_preferred_version(project_id, version_id.clone());
+                self.mod_db
+                    .set_preferred_version(project_id, version_id.clone());
                 version_id
             }
         };
@@ -75,31 +128,34 @@ impl<'a> ModSolver<'a> {
     /// Collect the appropriate version of a project
     fn collect_project_version(&mut self, project_id: &ProjectId) -> Result<VersionId> {
         let pid = self.collect_project_by_id(project_id)?;
-        let mod_project = self.mod_db.get_project_by_id(&pid).expect("weewoo");
-        if mod_project.loaders.contains(&self.mod_config.defaults.loader) {
-            self.collect_config_project(
-                &config::ConfigProject {
-                    name: mod_project.slug.clone(),
-                    game_version: self.mod_config.defaults.game_version,
-                    loader: self.mod_config.defaults.loader,
-                },
-            )
+        let mod_project =
+            self.mod_db
+                .get_project_by_id(&pid)
+                .ok_or_else(|| Error::LocalCacheMiss {
+                    key: project_id.to_string(),
+                    msg: "Project was not added".into(),
+                })?;
+        if mod_project
+            .loaders
+            .contains(&self.mod_config.defaults.loader)
+        {
+            self.collect_config_project(&config::ConfigProject {
+                name: mod_project.slug.clone(),
+                game_version: self.mod_config.defaults.game_version,
+                loader: self.mod_config.defaults.loader,
+            })
         } else if mod_project.loaders.contains(&ModLoader::Minecraft) {
-            self.collect_config_project(
-                &config::ConfigProject {
-                    name: mod_project.slug.clone(),
-                    game_version: self.mod_config.defaults.game_version,
-                    loader: ModLoader::Minecraft,
-                },
-            )
+            self.collect_config_project(&config::ConfigProject {
+                name: mod_project.slug.clone(),
+                game_version: self.mod_config.defaults.game_version,
+                loader: ModLoader::Minecraft,
+            })
         } else if mod_project.loaders.contains(&ModLoader::Datapack) {
-            self.collect_config_project(
-                &config::ConfigProject {
-                    name: mod_project.slug.clone(),
-                    game_version: self.mod_config.defaults.game_version,
-                    loader: ModLoader::Datapack,
-                },
-            )
+            self.collect_config_project(&config::ConfigProject {
+                name: mod_project.slug.clone(),
+                game_version: self.mod_config.defaults.game_version,
+                loader: ModLoader::Datapack,
+            })
         } else {
             todo!(
                 "No idea how to resolve this one {}, {:?}",
@@ -110,9 +166,7 @@ impl<'a> ModSolver<'a> {
     }
 
     /// Collect all the dependencies of a version. If one is missing, they are not collected.
-    fn collect_dependencies(
-        &mut self, version_id: &VersionId,
-    ) -> Result<Vec<types::ModLink>> {
+    fn collect_dependencies(&mut self, version_id: &VersionId) -> Result<Vec<VersionId>> {
         let Some(version) = self.mod_db.get_version(version_id) else {
             return Err(Error::LocalCacheMiss {
                 key: version_id.as_str().into(),
@@ -120,7 +174,7 @@ impl<'a> ModSolver<'a> {
             });
         };
         let deps = version.dependencies.clone();
-        let mut found_deps = Vec::<ModLink>::new();
+        let mut found_deps = Vec::<VersionId>::new();
         for dep in &deps {
             if self.mod_db.contains_key(dep) {
                 continue;
@@ -134,21 +188,20 @@ impl<'a> ModSolver<'a> {
             };
             if collected.is_err() {
                 for each in &found_deps {
-                    self.mod_db.remove(each);
+                    self.mod_db.remove(&each.clone().into());
                 }
             }
             let collected = collected?;
             let deps_res = self.collect_dependencies(&collected);
-            let collected = ModLink::from(collected);
             let mut collected = match deps_res {
                 Ok(mut x) => {
                     x.push(collected);
                     x
                 }
                 Err(e) => {
-                    self.mod_db.remove(&collected);
+                    self.mod_db.remove(&collected.into());
                     for each in &found_deps {
-                        self.mod_db.remove(each);
+                        self.mod_db.remove(&each.clone().into());
                     }
                     return Err(e);
                 }
