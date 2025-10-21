@@ -1,4 +1,5 @@
 use std::{
+    arch::x86_64::_MM_EXCEPT_DENORM,
     fs,
     path::{Path, PathBuf},
 };
@@ -6,7 +7,7 @@ use std::{
 use clap::Parser;
 use error::{Error, Result};
 
-use crate::types::*;
+use crate::{config::ConfigProject, types::*};
 
 mod config;
 mod error;
@@ -114,7 +115,7 @@ fn collect_version(
 }
 
 /// Collect the latest version of a project and return its id
-fn collect_latest_version(
+fn collect_config_project(
     client: &labrinth::Client,
     moddb: &mut types::ModDB,
     project: &config::ConfigProject,
@@ -143,10 +144,43 @@ fn collect_latest_version(
     Ok(version_id)
 }
 
+/// Collect the appropriate version of a project
+fn collect_project_version(
+    client: &labrinth::Client,
+    moddb: &mut types::ModDB,
+    mcmod: &config::Config,
+    project_id: &ProjectId
+) -> Result<VersionId> {
+    let pid = collect_project_by_id(client, moddb, project_id)?;
+    let mod_project = moddb.get_project_by_id(&pid).expect("weewoo");
+    if mod_project.loaders.contains(&mcmod.defaults.loader) {
+        collect_config_project(client, moddb, &config::ConfigProject {
+            name: ProjectSlug::from(mod_project.slug.clone()),
+            game_version: mcmod.defaults.game_version,
+            loader: mcmod.defaults.loader
+        })
+    } else if mod_project.loaders.contains(&ModLoader::Minecraft) {
+        collect_config_project(client, moddb, &config::ConfigProject {
+            name: ProjectSlug::from(mod_project.slug.clone()),
+            game_version: mcmod.defaults.game_version,
+            loader: ModLoader::Minecraft,
+        })
+    } else if mod_project.loaders.contains(&ModLoader::Datapack) {
+        collect_config_project(client, moddb, &config::ConfigProject {
+            name: ProjectSlug::from(mod_project.slug.clone()),
+            game_version: mcmod.defaults.game_version,
+            loader: ModLoader::Datapack,
+        })
+    } else {
+        todo!("No idea how to resolve this one {}, {:?}", mod_project.slug, mod_project.loaders)
+    }
+}
+
 /// Collect all the dependencies of a version. If one is missing, they are not collected.
 fn collect_dependencies(
     client: &labrinth::Client,
     moddb: &mut types::ModDB,
+    mcmod: &config::Config,
     version_id: &VersionId,
 ) -> Result<Vec<types::ModLink>> {
     let Some(version) = moddb.get_version(version_id) else {
@@ -162,9 +196,8 @@ fn collect_dependencies(
             continue;
         }
         let collected = match dep {
-            ModLink::ProjectId(_x) => {
-                todo!("How to select a project version?");
-                // collect_project(client, moddb, x).map(|y| ModLink::ProjectId(y))
+            ModLink::ProjectId(x) => {
+                collect_project_version(client, moddb, mcmod, x)
             }
             ModLink::VersionId(x) => collect_version(client, moddb, x),
             ModLink::ProjectSlug(_) => {
@@ -177,7 +210,7 @@ fn collect_dependencies(
             }
         }
         let collected = collected?;
-        let deps_res = collect_dependencies(client, moddb, &collected);
+        let deps_res = collect_dependencies(client, moddb, mcmod, &collected);
         let collected = ModLink::from(collected);
         let mut collected = match deps_res {
             Ok(mut x) => {
@@ -206,29 +239,30 @@ fn collect_required_versions(
     let mut versions = Vec::<ModLink>::new();
     for project in mcmod.projects() {
         println!("Collecting {}", project.name);
-        let mut collected = collect_project_version(client, moddb, &project)?;
+        let mut collected = collect_version_all(client, moddb, mcmod, &project)?;
         versions.append(&mut collected);
     }
     Ok(versions)
 }
 
 /// Get a version and all of its dependencies
-fn collect_project_version(
+fn collect_version_all(
     client: &labrinth::Client,
     moddb: &mut ModDB,
+    mcmod: &config::Config,
     project: &config::ConfigProject,
 ) -> Result<Vec<ModLink>> {
-    let base_id = match collect_latest_version(client, moddb, project) {
+    let base_id = match collect_config_project(client, moddb, project) {
         Ok(x) => {
             println!("  Found version {x}");
             x
         }
         Err(e) => {
-            print!("  Error: {e}");
+            println!("  Error: {e}");
             return Err(e);
         }
     };
-    let mut deps = match collect_dependencies(client, moddb, &base_id) {
+    let mut deps = match collect_dependencies(client, moddb, mcmod, &base_id) {
         Ok(x) => {
             if !x.is_empty() {
                 println!("  Found {} dependencies", x.len());
@@ -236,7 +270,7 @@ fn collect_project_version(
             x
         }
         Err(e) => {
-            print!("  Error: {e}");
+            println!("  Error: {e}");
             moddb.remove(&types::ModLink::VersionId(base_id));
             return Err(e);
         }
@@ -254,7 +288,7 @@ fn collect_optional_versions(
     let mut versions = Vec::<ModLink>::new();
     for project in mcmod.optional_projects() {
         println!("Collecting optional {}", project.name);
-        let mut collected = match collect_project_version(client, moddb, &project) {
+        let mut collected = match collect_version_all(client, moddb, mcmod, &project) {
             Ok(x) => x,
             Err(_) => continue,
         };
@@ -285,7 +319,7 @@ fn init_temp(tmp: &PathBuf) -> std::io::Result<PathBuf> {
 /// in the directory.
 fn download_files(
     client: &labrinth::Client,
-    versions: &Vec<&ModVersion>,
+    moddb: &ModDB,
     path: &Path,
 ) -> Result<()> {
     new_empty_dir(&path.to_path_buf()).expect("Failure to empty temp sub-directory");
@@ -293,8 +327,9 @@ fn download_files(
         let dir = path.join(dir);
         new_empty_dir(&dir).expect("Failure to empty temp sub-directory");
     }
-    for version in versions {
-        println!("Downloading {}", version.name);
+    for version in moddb.get_versions() {
+        let project_name = moddb.get_project_by_id(&version.project_id).map(|x| x.name.clone()).unwrap_or_else(|| "Project not cached!".into());
+        println!("Downloading {} ({})", version.name, project_name);
         let files = client.download_version_files(version)?;
         let folder = match version.loaders.first() {
             Some(ModLoader::Minecraft) => "resourcepacks",
@@ -386,7 +421,7 @@ fn main() {
     }
 
     let temp_path = init_temp(&mcmod.paths.temp).expect("Failure to initialize temp directory");
-    download_files(&client, &moddb.get_versions(), &temp_path).expect("Failure to download files");
+    download_files(&client, &moddb, &temp_path).expect("Failure to download files");
 
     if let Some(download_path) = cli.download.as_ref() {
         println!("Copying to {download_path:?}");
@@ -561,7 +596,7 @@ mod tests {
         let _versions =
             collect_versions(&client, &mut moddb, &mcmod).expect("Failure to collect versions");
         let temp = init_temp(&mcmod.paths.temp).expect("Failed to initialize temp path");
-        download_files(&client, &moddb.get_versions(), &temp).expect("Failure to download files");
+        download_files(&client, &moddb, &temp).expect("Failure to download files");
         let minecraft = &mcmod.paths.dot_minecraft;
         install_files(&temp, &minecraft).expect("Failure to install files");
         check_children_count(&minecraft.join("datapacks"), 1);

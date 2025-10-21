@@ -41,7 +41,4 @@ tidal-towns.defaults = true
 camps_castles_carriages.defaults = true
 saturated.defaults=true
 rebalanced-loot.defaults = true
-coven={defaults=true, loader="minecraft"}
-biomesyougo.defaults = true
-fabric-seasons.defaults=true
-serene-seasons.defaults = true
+biomes-o-plenty.defaults = true
