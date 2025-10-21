@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::error::{Error, Result};
 
 /// Enumeration of mod loader options
@@ -24,6 +26,7 @@ pub enum ModLoader {
     Fabric,
     #[strum(to_string = "forge")]
     Forge,
+    #[serde(rename = "neoforge")]
     #[strum(to_string = "neoforge")]
     NeoForge,
     #[strum(to_string = "quilt")]
@@ -78,63 +81,198 @@ pub enum ModLoader {
 /// Minecraft version structure
 #[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 #[serde(try_from = "String", into = "String")]
-pub struct MinecraftVersion {
-    /// Major version number
-    major: u8,
-    /// Minor version number
-    minor: u8,
-    /// Patch version number
-    patch: Option<u8>,
+pub enum MinecraftVersion {
+    Release {
+        /// Major version number
+        major: u8,
+        /// Minor version number
+        minor: u8,
+        /// Patch version number
+        patch: Option<u8>,
+        /// Release suffix
+        suffix: MinecraftReleaseSuffix,
+    },
+    Snapshot {
+        /// The year the snapshot was published
+        year: u8,
+        /// The week the snapshot was published
+        week: u8,
+        /// A unique identifier to distinguish between multiple snapshots in a week
+        ident: Option<u8>,
+    },
+    Beta {
+        /// Minor version number
+        major: u8,
+        /// Minor version number
+        minor: u8,
+        /// Patch version number
+        patch: Option<u8>,
+    },
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
+#[serde(try_from = "String", into = "String")]
+pub enum MinecraftReleaseSuffix {
+    /// No release suffix
+    None,
+    /// Pre release number
+    PreRelease(u8),
+    /// Release candidate number
+    Candidate(u8),
 }
 
 impl std::fmt::Display for MinecraftVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}.{}.{}",
-            self.major,
-            self.minor,
-            self.patch
-                .map_or_else(|| String::from("x"), |x| x.to_string())
-        )
+        match self {
+            MinecraftVersion::Release {
+                major,
+                minor,
+                patch,
+                suffix,
+            } => write!(
+                f,
+                "{}.{}.{}{}",
+                major,
+                minor,
+                patch.map_or_else(|| String::from("x"), |x| x.to_string()),
+                suffix
+            ),
+            MinecraftVersion::Snapshot { year, week, ident } => {
+                write!(
+                    f,
+                    "{}w{}{}",
+                    year,
+                    week,
+                    ident.map_or_else(
+                        || String::from(""),
+                        |x| String::from_utf8(vec![x]).expect("Invalid utf-8 in snapshot")
+                    )
+                )
+            }
+            MinecraftVersion::Beta {
+                major,
+                minor,
+                patch,
+            } => {
+                write!(
+                    f,
+                    "b{}.{}.{}",
+                    major,
+                    minor,
+                    patch.map_or_else(|| String::from("x"), |x| x.to_string())
+                )
+            }
+        }
+    }
+}
+
+impl std::fmt::Display for MinecraftReleaseSuffix {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MinecraftReleaseSuffix::None => write!(f, ""),
+            MinecraftReleaseSuffix::PreRelease(x) => write!(f, "-pre{x}"),
+            MinecraftReleaseSuffix::Candidate(x) => write!(f, "-rc{x}"),
+        }
+    }
+}
+
+impl From<MinecraftReleaseSuffix> for String {
+    fn from(value: MinecraftReleaseSuffix) -> Self {
+        format!("{}", value)
+    }
+}
+
+impl TryFrom<String> for MinecraftReleaseSuffix {
+    type Error = Error;
+    fn try_from(value: String) -> std::result::Result<Self, Self::Error> {
+        if value.is_empty() {
+            return Ok(MinecraftReleaseSuffix::None);
+        }
+        let kind = value
+            .get(0..value.len() - 1)
+            .ok_or_else(|| Error::InvalidMinecraftVersion(value.clone()))?;
+        let number = value
+            .get(value.len() - 1..)
+            .and_then(|x| x.parse::<u8>().ok())
+            .ok_or_else(|| Error::InvalidMinecraftVersion(value.clone()))?;
+        match kind {
+            "pre" => Ok(MinecraftReleaseSuffix::PreRelease(number)),
+            "rc" => Ok(MinecraftReleaseSuffix::Candidate(number)),
+            _ => Err(Error::InvalidMinecraftVersion(value.clone())),
+        }
     }
 }
 
 impl From<MinecraftVersion> for String {
     fn from(value: MinecraftVersion) -> Self {
-        format!(
-            "{}.{}.{}",
-            value.major,
-            value.minor,
-            value
-                .patch
-                .map_or_else(|| String::from("x"), |x| x.to_string())
-        )
+        format!("{}", value)
     }
 }
 
 impl TryFrom<String> for MinecraftVersion {
     type Error = Error;
     fn try_from(value: String) -> std::result::Result<Self, Self::Error> {
-        let parts: Vec<_> = value.split(".").collect();
-        if parts.len() < 2 || 3 < parts.len() {
-            return Err(Error::InvalidMinecraftVersion(value.to_string()));
-        }
+        let parts: Vec<_> = value.split(&['.', '-']).collect();
         let parse_u8 = |s: &str| -> Result<u8> {
             s.parse::<u8>()
                 .map_err(|_| Error::InvalidMinecraftVersion(value.to_string()))
         };
-        let (major, minor) = (parse_u8(parts[0])?, parse_u8(parts[1])?);
-        let patch = if parts.get(2).map_or("x", |x| *x).eq_ignore_ascii_case("x") {
-            None
-        } else {
-            Some(parse_u8(parts[2])?)
-        };
-        Ok(MinecraftVersion {
-            major,
-            minor,
-            patch,
-        })
+        match parts.len() {
+            1 => {
+                let parts: Vec<_> = value.split("w").collect();
+                if parts.len() != 2 {
+                    return Err(Error::InvalidMinecraftVersion(value.to_string()));
+                }
+                let year = parse_u8(parts[0])?;
+                let week = parse_u8(parts[1].get(0..2).expect(""))?;
+                let ident = parts[1]
+                    .matches(|x: char| x.is_ascii_alphabetic())
+                    .next()
+                    .map(|x| x.as_bytes()[0]);
+                Ok(MinecraftVersion::Snapshot { year, week, ident })
+            }
+            2 | 3 if value.starts_with('b') => {
+                let (major, minor) = (parse_u8(&parts[0][1..])?, parse_u8(parts[1])?);
+                let patch = match parts.get(2) {
+                    Some(x) => Some(parse_u8(x)?),
+                    None => None,
+                };
+                Ok(MinecraftVersion::Beta {
+                    major,
+                    minor,
+                    patch,
+                })
+            }
+            2..=4 => {
+                let (major, minor) = (parse_u8(parts[0])?, parse_u8(parts[1])?);
+                let (patch, suffix) = match (parts.get(2), parts.get(3)) {
+                    (None, None) => (None, MinecraftReleaseSuffix::None),
+                    (Some(x), None) => {
+                        if value.contains('-') {
+                            (None, MinecraftReleaseSuffix::try_from(x.to_string())?)
+                        } else if x.eq_ignore_ascii_case("x") {
+                            (None, MinecraftReleaseSuffix::None)
+                        } else {
+                            (Some(parse_u8(x)?), MinecraftReleaseSuffix::None)
+                        }
+                    }
+                    (Some(x), Some(y)) => (
+                        Some(parse_u8(x)?),
+                        MinecraftReleaseSuffix::try_from(y.to_string())?,
+                    ),
+                    (None, Some(_)) => {
+                        unreachable!("Can't have [3] without [2]")
+                    }
+                };
+                Ok(MinecraftVersion::Release {
+                    major,
+                    minor,
+                    patch,
+                    suffix,
+                })
+            }
+            _ => Err(Error::InvalidMinecraftVersion(value.to_string())),
+        }
     }
 }
 
@@ -151,9 +289,226 @@ impl From<&str> for MinecraftVersion {
     }
 }
 
+/// An internal database of the projects and versions collected
+#[derive(Default)]
+pub struct ModDB {
+    /// A mapping of project ids to project data
+    projects: HashMap<ProjectId, ModProject>,
+    /// A mapping of version ids to version data
+    versions: HashMap<VersionId, ModVersion>,
+    /// A mapping of project slugs to project ids
+    project_slugs: HashMap<ProjectSlug, ProjectId>,
+    /// A map of project ids to preferred versions
+    project_versions: HashMap<ProjectId, VersionId>,
+}
+
+impl ModDB {
+    /// Insert a project into the database, and return the previous project at the same project_id
+    pub fn add_project(&mut self, project: ModProject) -> Option<ModProject> {
+        self.project_slugs
+            .insert(project.slug.clone(), project.project_id.clone());
+        self.projects.insert(project.project_id.clone(), project)
+    }
+    /// Insert a version into the database, and return the previous version at the same version_id
+    pub fn add_version(&mut self, version: ModVersion) -> Option<ModVersion> {
+        self.versions.insert(version.version_id.clone(), version)
+    }
+    pub fn contains_key(&self, mod_link: &ModLink) -> bool {
+        match mod_link {
+            ModLink::ProjectId(x) => self.projects.contains_key(x),
+            ModLink::ProjectSlug(x) => self.project_slugs.contains_key(x),
+            ModLink::VersionId(x) => self.versions.contains_key(x),
+        }
+    }
+    pub fn remove(&mut self, mod_link: &ModLink) {
+        match mod_link {
+            ModLink::ProjectId(x) => {
+                self.projects.remove(x);
+            }
+            ModLink::ProjectSlug(x) => {
+                self.project_slugs.remove(x);
+            }
+            ModLink::VersionId(x) => {
+                self.versions.remove(x);
+            }
+        }
+    }
+    /// Get a vector of all collected versions
+    pub fn get_versions(&self) -> Vec<&ModVersion> {
+        self.versions.values().collect()
+    }
+    /// Get the project of a given id
+    pub fn get_project_by_id(&self, project_id: &ProjectId) -> Option<&ModProject> {
+        self.projects.get(project_id)
+    }
+    /// Get the project of a given slug
+    pub fn get_project_by_slug(&self, project_slug: &ProjectSlug) -> Option<&ModProject> {
+        self.projects.get(self.project_slugs.get(project_slug)?)
+    }
+    /// Get the version of a given id
+    pub fn get_version(&self, version_id: &VersionId) -> Option<&ModVersion> {
+        self.versions.get(version_id)
+    }
+    /// Set the preferred version for a project, and return the previous preferred version
+    pub fn set_preferred_version(
+        &mut self,
+        project_id: ProjectId,
+        version_id: VersionId,
+    ) -> Option<VersionId> {
+        self.project_versions.insert(project_id, version_id)
+    }
+    /// Get the preferred version of a project by its id
+    pub fn get_preferred_by_id(&self, project_id: &ProjectId) -> Option<&ModVersion> {
+        self.project_versions
+            .get(project_id)
+            .and_then(|x| self.versions.get(x))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum ModLink {
+    ProjectId(ProjectId),
+    ProjectSlug(ProjectSlug),
+    VersionId(VersionId),
+}
+
+impl From<ProjectId> for ModLink {
+    fn from(value: ProjectId) -> Self {
+        Self::ProjectId(value)
+    }
+}
+
+impl From<ProjectSlug> for ModLink {
+    fn from(value: ProjectSlug) -> Self {
+        Self::ProjectSlug(value)
+    }
+}
+
+impl From<VersionId> for ModLink {
+    fn from(value: VersionId) -> Self {
+        Self::VersionId(value)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ProjectId(String);
+
+impl ProjectId {
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl From<String> for ProjectId {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
+impl From<ProjectId> for String {
+    fn from(value: ProjectId) -> Self {
+        value.0
+    }
+}
+
+impl std::fmt::Display for ProjectId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ProjectSlug(String);
+
+impl ProjectSlug {
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl From<&str> for ProjectSlug {
+    fn from(value: &str) -> Self {
+        Self(value.to_owned())
+    }
+}
+
+impl From<String> for ProjectSlug {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
+impl From<ProjectSlug> for String {
+    fn from(value: ProjectSlug) -> Self {
+        value.0
+    }
+}
+
+impl std::fmt::Display for ProjectSlug {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct VersionId(String);
+
+impl VersionId {
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl From<String> for VersionId {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
+impl From<VersionId> for String {
+    fn from(value: VersionId) -> Self {
+        value.0
+    }
+}
+
+impl std::fmt::Display for VersionId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Debug)]
+pub struct ModProject {
+    pub project_id: ProjectId,
+    pub name: String,
+    pub slug: ProjectSlug,
+    // pub version_ids: Vec<VersionId>,
+    // pub game_versions: Vec<MinecraftVersion>,
+    pub loaders: Vec<ModLoader>,
+}
+
+#[derive(Debug)]
+pub struct ModVersion {
+    pub project_id: ProjectId,
+    pub version_id: VersionId,
+    pub name: String,
+    #[cfg(test)]
+    pub game_versions: Vec<MinecraftVersion>,
+    pub loaders: Vec<ModLoader>,
+    pub files: Vec<ModFile>,
+    pub dependencies: Vec<ModLink>,
+    pub date_published: chrono::NaiveDateTime,
+}
+
+#[derive(Debug)]
+pub struct ModFile {
+    pub url: String,
+    pub name: String,
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::types::MinecraftVersion;
+    use super::*;
 
     #[test]
     fn test_version_full() {
@@ -161,10 +516,27 @@ mod tests {
             .expect("MinecraftVersion shall be able to parse a version string");
         assert_eq!(
             parsed,
-            MinecraftVersion {
+            MinecraftVersion::Release {
                 major: 1,
                 minor: 23,
-                patch: Some(4)
+                patch: Some(4),
+                suffix: MinecraftReleaseSuffix::None,
+            }
+        );
+    }
+
+    #[test]
+    fn test_version_rc() {
+        let parsed = MinecraftVersion::try_from("1.23.4-rc5").expect(
+            "MinecraftVersion shall be able to parse a version string of a release candidate",
+        );
+        assert_eq!(
+            parsed,
+            MinecraftVersion::Release {
+                major: 1,
+                minor: 23,
+                patch: Some(4),
+                suffix: MinecraftReleaseSuffix::Candidate(5),
             }
         );
     }
@@ -174,10 +546,11 @@ mod tests {
         let parsed = MinecraftVersion::try_from("1.23.x").expect("MinecraftVersion shall be able to parse a version string where the patch version is 'x'");
         assert_eq!(
             parsed,
-            MinecraftVersion {
+            MinecraftVersion::Release {
                 major: 1,
                 minor: 23,
-                patch: None
+                patch: None,
+                suffix: MinecraftReleaseSuffix::None,
             }
         );
     }
@@ -187,11 +560,68 @@ mod tests {
         let parsed = MinecraftVersion::try_from("1.23").expect("MinecraftVersion shall be able to parse a version string where the patch version is not given");
         assert_eq!(
             parsed,
-            MinecraftVersion {
+            MinecraftVersion::Release {
                 major: 1,
                 minor: 23,
-                patch: None
+                patch: None,
+                suffix: MinecraftReleaseSuffix::None,
             }
         );
+    }
+
+    #[test]
+    fn test_version_pre() {
+        let parsed = MinecraftVersion::try_from("1.23.4-pre5").expect("MinecraftVersion shall be able to parse a version string where the patch version is not given");
+        assert_eq!(
+            parsed,
+            MinecraftVersion::Release {
+                major: 1,
+                minor: 23,
+                patch: Some(4),
+                suffix: MinecraftReleaseSuffix::PreRelease(5),
+            }
+        );
+    }
+
+    #[test]
+    fn test_version_snapshot_twodigit() {
+        let parsed = MinecraftVersion::try_from("12w34a")
+            .expect("MinecraftVersion shal lbe able to parse a snapshot version string");
+        assert_eq!(
+            parsed,
+            MinecraftVersion::Snapshot {
+                year: 12,
+                week: 34,
+                ident: Some("a".as_bytes()[0])
+            }
+        )
+    }
+
+    #[test]
+    fn test_version_snapshot_onedigit() {
+        let parsed = MinecraftVersion::try_from("12w03a")
+            .expect("MinecraftVersion shal lbe able to parse a snapshot version string");
+        assert_eq!(
+            parsed,
+            MinecraftVersion::Snapshot {
+                year: 12,
+                week: 3,
+                ident: Some("a".as_bytes()[0])
+            }
+        )
+    }
+
+    #[test]
+    fn test_version_snapshot_noident() {
+        let parsed = MinecraftVersion::try_from("12w34")
+            .expect("MinecraftVersion shal lbe able to parse a snapshot version string");
+        assert_eq!(
+            parsed,
+            MinecraftVersion::Snapshot {
+                year: 12,
+                week: 34,
+                ident: None
+            }
+        )
     }
 }

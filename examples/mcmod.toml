@@ -7,12 +7,12 @@ loader = "fabric"
 [projects]
 
 # libraries (this section can be removed when dependency resolution is available)
-fabric-api.defaults = true
-cloth-config.defaults = true
-glitchcore.defaults = true
+# fabric-api.defaults = true
+# cloth-config.defaults = true
+# glitchcore.defaults = true
 
 # graphics
-complementary-reimagined.defaults = true
+complementary-reimagined = {defaults = true, loader = "iris"}
 continuity.defaults = true
 sodium.defaults = true
 iris.defaults = true
@@ -29,19 +29,16 @@ fpsdisplay.defaults = true
 dungeons-and-taverns.defaults = true
 hopo-better-ruined-portals.defaults = true
 hopo-better-underwater-ruins.defaults = true
-camps_castles_carriages.defaults = true
 scorched.defaults = true
 stellarity.defaults = true
-tidal-towns.defaults = true
 wabi-sabi-structures.defaults = true
 
 # other
 blazeandcaves-advancements-pack = { defaults = true, loader = "datapack" }
 
 [optional-projects]
-# saturated.defaults=true
+tidal-towns.defaults = true
+camps_castles_carriages.defaults = true
+saturated.defaults=true
 rebalanced-loot.defaults = true
-# coven={defaults=true, loader="minecraft"}
-biomesyougo.defaults = true
-# fabric-seasons.defaults=true
-serene-seasons.defaults = true
+biomes-o-plenty.defaults = true
