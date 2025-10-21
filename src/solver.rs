@@ -51,7 +51,7 @@ impl<'a> ModSolver<'a> {
     }
 
     /// Collect a config project and its dependencies
-    fn collect_project_and_dependencies(
+    pub fn collect_project_and_dependencies(
         &mut self,
         project: &config::ConfigProject,
     ) -> Result<Vec<VersionId>> {

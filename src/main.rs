@@ -54,6 +54,25 @@ fn load_config(cli: &Cli) -> Result<config::Config> {
     Ok(mcmod)
 }
 
+fn solve_versions(mod_config: &config::Config) -> Result<types::ModDB> {
+    let mut mod_solver = solver::ModSolver::new(mod_config);
+    for project in mod_config.projects() {
+        println!("Collecting {}", project.name);
+        mod_solver
+            .collect_project_and_dependencies(&project)
+            .inspect(|x| println!("  Found {} projects", x.len()))
+            .inspect_err(|e| println!("  Error: {e}"))?;
+    }
+    for project in mod_config.optional_projects() {
+        println!("Collecting {} (optional)", project.name);
+        let _ = mod_solver
+            .collect_project_and_dependencies(&project)
+            .inspect(|x| println!("  Found {} projects", x.len()))
+            .inspect_err(|e| println!("  Error: {e}"));
+    }
+    mod_solver.solve()
+}
+
 /// Initialize the temp directory to be empty
 fn init_temp(tmp: &PathBuf) -> std::io::Result<PathBuf> {
     // TODO: Make hashed temp paths to prevent collisions with other instances
@@ -63,14 +82,15 @@ fn init_temp(tmp: &PathBuf) -> std::io::Result<PathBuf> {
 
 /// Download the files from the given versions into the given directory, deleting any previous files
 /// in the directory.
-fn download_files(client: &labrinth::Client, moddb: &ModDB, path: &Path) -> Result<()> {
+fn download_files(mod_db: &ModDB, path: &Path) -> Result<()> {
     new_empty_dir(&path.to_path_buf()).expect("Failure to empty temp sub-directory");
     for dir in ["mods", "resourcepacks", "datapacks", "shaderpacks"] {
         let dir = path.join(dir);
         new_empty_dir(&dir).expect("Failure to empty temp sub-directory");
     }
-    for version in moddb.get_versions() {
-        let project_name = moddb
+    let client = labrinth::Client::new();
+    for version in mod_db.get_versions() {
+        let project_name = mod_db
             .get_project_by_id(&version.project_id)
             .map(|x| x.name.clone())
             .unwrap_or_else(|| "Project not cached!".into());
@@ -144,28 +164,28 @@ fn install_files(src: &PathBuf, dot_minecraft: &PathBuf) -> std::io::Result<()> 
 
 fn main() {
     let cli = Cli::parse();
-    let mcmod = load_config(&cli).expect("Failure to load config");
-    let client = labrinth::Client::new();
+    let mod_config = load_config(&cli).expect("Failure to load config");
     if cli.validate {
+        let client = labrinth::Client::new();
         let errors = client.validate_enums().expect("Failed to compare data");
         if !errors.is_empty() {
             println!("{errors:?}")
         }
     }
 
-    let solver = solver::ModSolver::new(&mcmod);
-    let moddb = solver.solve().expect("Failure to resolve dependencies");
+    let mod_db = solve_versions(&mod_config).expect("Failure to resolve projects");
 
-    let total = mcmod.projects().len() + mcmod.optional_projects().len();
-    let collected = moddb.get_versions().len();
+    let total = mod_config.projects().len() + mod_config.optional_projects().len();
+    let collected = mod_db.get_versions().len();
     println!("Found {collected}/{total} projects");
 
     if !cli.install && cli.download.is_none() {
         return;
     }
 
-    let temp_path = init_temp(&mcmod.paths.temp).expect("Failure to initialize temp directory");
-    download_files(&client, &moddb, &temp_path).expect("Failure to download files");
+    let temp_path =
+        init_temp(&mod_config.paths.temp).expect("Failure to initialize temp directory");
+    download_files(&mod_db, &temp_path).expect("Failure to download files");
 
     if let Some(download_path) = cli.download.as_ref() {
         println!("Copying to {download_path:?}");
@@ -177,8 +197,9 @@ fn main() {
     }
 
     if cli.install {
-        println!("Installing to {:?}", mcmod.paths.dot_minecraft);
-        install_files(&temp_path, &mcmod.paths.dot_minecraft).expect("Failure to install files");
+        println!("Installing to {:?}", mod_config.paths.dot_minecraft);
+        install_files(&temp_path, &mod_config.paths.dot_minecraft)
+            .expect("Failure to install files");
     }
 }
 
@@ -338,8 +359,7 @@ mod tests {
         let mod_solver = solver::ModSolver::new(&mcmod);
         let moddb = mod_solver.solve().expect("Failure to resolve versions");
         let temp = init_temp(&mcmod.paths.temp).expect("Failed to initialize temp path");
-        let client = labrinth::Client::new();
-        download_files(&client, &moddb, &temp).expect("Failure to download files");
+        download_files(&moddb, &temp).expect("Failure to download files");
         let minecraft = &mcmod.paths.dot_minecraft;
         install_files(&temp, &minecraft).expect("Failure to install files");
         check_children_count(&minecraft.join("datapacks"), 1);
@@ -359,8 +379,7 @@ mod tests {
         let mod_solver = solver::ModSolver::new(&mcmod);
         let moddb = mod_solver.solve().expect("Failure to resolve versions");
         let temp = init_temp(&mcmod.paths.temp).expect("Failed to initialize temp path");
-        let client = labrinth::Client::new();
-        download_files(&client, &moddb, &temp).expect("Failure to download files");
+        download_files(&moddb, &temp).expect("Failure to download files");
         let minecraft = &mcmod.paths.dot_minecraft;
         install_files(&temp, &minecraft).expect("Failure to install files");
     }
