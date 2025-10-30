@@ -4,6 +4,7 @@ use reqwest::blocking as rb;
 
 const LABRINTH_URL: &str = "https://api.modrinth.com";
 
+#[derive(Default)]
 pub struct Client {
     client: rb::Client,
 }
@@ -94,21 +95,19 @@ impl Client {
     }
 
     /// Download a single file
-    pub fn download_file(&self, version_file: &types::ModFile) -> Result<Vec<u8>> {
-        Ok(self
-            .get(version_file.url.clone())?
-            .bytes()
-            .map(|x| x.into())?)
+    pub fn download_file(&self, file_url: &str) -> Result<Vec<u8>> {
+        Ok(self.get(file_url)?.bytes().map(|x| x.into())?)
     }
 
     /// Download the files of a version into a list of tuples of the file info and the bytes
+    #[cfg(test)]
     pub fn download_version_files<'a>(
         &self,
         version: &'a types::ModVersion,
     ) -> Result<Vec<(&'a types::ModFile, Vec<u8>)>> {
         let mut result = Vec::<(&'a types::ModFile, Vec<u8>)>::new();
         for version_file in &version.files {
-            result.push((version_file, self.download_file(version_file)?))
+            result.push((version_file, self.download_file(&version_file.url)?))
         }
         Ok(result)
     }
