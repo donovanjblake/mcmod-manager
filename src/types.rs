@@ -290,7 +290,7 @@ impl From<&str> for MinecraftVersion {
 }
 
 /// An internal database of the projects and versions collected
-#[derive(Default)]
+#[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct ModDB {
     /// A mapping of project ids to project data
     projects: HashMap<ProjectId, ModProject>,
@@ -298,6 +298,7 @@ pub struct ModDB {
     versions: HashMap<VersionId, ModVersion>,
     /// A mapping of project slugs to project ids
     project_slugs: HashMap<ProjectSlug, ProjectId>,
+    #[serde(skip)]
     /// A map of project ids to preferred versions
     project_versions: HashMap<ProjectId, VersionId>,
 }
@@ -365,7 +366,7 @@ impl ModDB {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub enum ModLink {
     ProjectId(ProjectId),
     ProjectSlug(ProjectSlug),
@@ -390,12 +391,16 @@ impl From<VersionId> for ModLink {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub struct ProjectId(String);
 
 impl ProjectId {
     pub fn as_str(&self) -> &str {
         self.0.as_str()
+    }
+
+    pub fn inner(&self) -> &String {
+        &self.0
     }
 }
 
@@ -417,12 +422,16 @@ impl std::fmt::Display for ProjectId {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub struct ProjectSlug(String);
 
 impl ProjectSlug {
     pub fn as_str(&self) -> &str {
         self.0.as_str()
+    }
+
+    pub fn inner(&self) -> &String {
+        &self.0
     }
 }
 
@@ -450,12 +459,16 @@ impl std::fmt::Display for ProjectSlug {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub struct VersionId(String);
 
 impl VersionId {
     pub fn as_str(&self) -> &str {
         self.0.as_str()
+    }
+
+    pub fn inner(&self) -> &String {
+        &self.0
     }
 }
 
@@ -477,7 +490,7 @@ impl std::fmt::Display for VersionId {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct ModProject {
     pub project_id: ProjectId,
     pub name: String,
@@ -487,7 +500,30 @@ pub struct ModProject {
     pub loaders: Vec<ModLoader>,
 }
 
-#[derive(Debug)]
+mod serde_naive_date_time {
+    use chrono::{DateTime, NaiveDateTime, Utc};
+    use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
+
+    pub fn serialize<S: Serializer>(
+        time: &NaiveDateTime,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error> {
+        DateTime::<Utc>::from_naive_utc_and_offset(time.clone(), Utc)
+            .to_rfc3339()
+            .serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<NaiveDateTime, D::Error> {
+        let time: String = Deserialize::deserialize(deserializer)?;
+        Ok(DateTime::parse_from_rfc3339(&time)
+            .map_err(D::Error::custom)?
+            .naive_utc())
+    }
+}
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct ModVersion {
     pub project_id: ProjectId,
     pub version_id: VersionId,
@@ -497,10 +533,11 @@ pub struct ModVersion {
     pub loaders: Vec<ModLoader>,
     pub files: Vec<ModFile>,
     pub dependencies: Vec<ModLink>,
+    #[serde(with = "serde_naive_date_time")]
     pub date_published: chrono::NaiveDateTime,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct ModFile {
     pub url: String,
     pub name: String,

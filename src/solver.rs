@@ -1,22 +1,22 @@
 use crate::config;
 use crate::error::{Error, Result};
-use crate::labrinth;
+use crate::mcmod_client;
 use crate::types::{self, ModLink, ModLoader, ProjectId, ProjectSlug, VersionId};
 
 /// Collects all mods and their dependencies according to the config
 pub struct ModSolver<'a> {
-    client: labrinth::Client,
-    mod_config: &'a config::Config,
     mod_db: types::ModDB,
+    mod_client: mcmod_client::Client,
+    mod_config: &'a config::Config,
 }
 
 impl<'a> ModSolver<'a> {
     /// Construct a new mod solver for a config
     pub fn new(mod_config: &'a config::Config) -> Self {
         ModSolver {
-            client: labrinth::Client::new(),
+            mod_db: Default::default(),
+            mod_client: Default::default(),
             mod_config,
-            mod_db: types::ModDB::default(),
         }
     }
 
@@ -69,9 +69,9 @@ impl<'a> ModSolver<'a> {
         if let Some(project) = &mut self.mod_db.get_project_by_id(project_id) {
             return Ok(project.project_id.clone());
         }
-        let project = self.client.get_project(project_id.as_str())?;
+        let project = self.mod_client.fetch_project_by_id(project_id)?;
         let project_id = project.project_id.clone();
-        self.mod_db.add_project(project);
+        self.mod_db.add_project(project.clone());
         Ok(project_id)
     }
 
@@ -80,9 +80,9 @@ impl<'a> ModSolver<'a> {
         if let Some(project) = &mut self.mod_db.get_project_by_slug(project_slug) {
             return Ok(project.project_id.clone());
         }
-        let project = self.client.get_project(project_slug.as_str())?;
+        let project = self.mod_client.fetch_project_by_slug(project_slug)?;
         let project_id = project.project_id.clone();
-        self.mod_db.add_project(project);
+        self.mod_db.add_project(project.clone());
         Ok(project_id)
     }
 
@@ -91,9 +91,9 @@ impl<'a> ModSolver<'a> {
         if let Some(version) = &mut self.mod_db.get_version(version_id) {
             return Ok(version.version_id.clone());
         }
-        let version = self.client.get_version(version_id.as_str())?;
+        let version = self.mod_client.fetch_version(version_id)?;
         let version_id = version.version_id.clone();
-        self.mod_db.add_version(version);
+        self.mod_db.add_version(version.clone());
         Ok(version_id)
     }
 
@@ -110,13 +110,13 @@ impl<'a> ModSolver<'a> {
         {
             Some(x) => x,
             None => {
-                let version = self.client.get_project_version_latest(
-                    project.name.as_str(),
+                let version = self.mod_client.get_project_version_latest(
+                    &project.name,
                     project.game_version,
                     project.loader,
                 )?;
                 let version_id = version.version_id.clone();
-                self.mod_db.add_version(version);
+                self.mod_db.add_version(version.clone());
                 self.mod_db
                     .set_preferred_version(project_id, version_id.clone());
                 version_id

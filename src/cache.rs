@@ -1,13 +1,13 @@
 use std::path::PathBuf;
 
 use crate::error::Result;
-use crate::labrinth;
+use crate::mcmod_client::Client;
 use crate::types::*;
 
 pub struct ModFileManager {
     data_dir: PathBuf,
     dot_minecraft_dir: PathBuf,
-    client: labrinth::Client,
+    client: Client,
 }
 
 impl ModFileManager {

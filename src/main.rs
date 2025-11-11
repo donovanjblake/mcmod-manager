@@ -8,7 +8,7 @@ use crate::types::*;
 mod cache;
 mod config;
 mod error;
-mod labrinth;
+mod mcmod_client;
 mod solver;
 mod types;
 

@@ -2,7 +2,7 @@ use crate::error::{Error, Result};
 use crate::types::{self, MinecraftVersion, ModLoader};
 use reqwest::blocking as rb;
 
-const LABRINTH_URL: &str = "https://api.modrinth.com";
+const API_MODRINTH: &str = "https://api.modrinth.com";
 
 #[derive(Default)]
 pub struct Client {
@@ -38,14 +38,14 @@ impl Client {
 
     /// Get a project from the database
     pub fn get_project(&self, project: &str) -> Result<types::ModProject> {
-        let response = self.get(format!("{LABRINTH_URL}/v2/project/{project}"))?;
+        let response = self.get(format!("{API_MODRINTH}/v2/project/{project}"))?;
         let project = serde_json::from_str::<Project>(response.text()?.as_str())?;
         Ok(project.into())
     }
 
     /// Get a version from the database
     pub fn get_version(&self, version: &str) -> Result<types::ModVersion> {
-        let response = self.get(format!("{LABRINTH_URL}/v2/version/{version}"))?;
+        let response = self.get(format!("{API_MODRINTH}/v2/version/{version}"))?;
         let version = serde_json::from_str::<Version>(response.text()?.as_str())?;
         Ok(version.into())
     }
@@ -72,7 +72,7 @@ impl Client {
             ("loaders", format!("[{loaders}]")),
         ];
         let response = self.get_form(
-            format!("{LABRINTH_URL}/v2/project/{project}/version"),
+            format!("{API_MODRINTH}/v2/project/{project}/version"),
             &params,
         )?;
         let versions = serde_json::from_str::<Vec<Version>>(response.text()?.as_str())?;
@@ -115,7 +115,7 @@ impl Client {
     /// Validate all internal enumerations are up to date
     pub fn validate_enums(&self) -> Result<Vec<Error>> {
         let mut result = Vec::<Error>::new();
-        let repsonse = self.get(format!("{LABRINTH_URL}/v2/tag/loader"))?;
+        let repsonse = self.get(format!("{API_MODRINTH}/v2/tag/loader"))?;
         let values = serde_json::from_str::<Vec<LoaderInfo>>(repsonse.text()?.as_str())?;
         for v in values {
             if let Err(e) = ModLoader::try_from(v.name.as_str()) {
