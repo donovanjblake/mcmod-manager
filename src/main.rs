@@ -71,6 +71,25 @@ fn solve_versions(mod_config: &config::Config) -> Result<types::ModDB> {
     mod_solver.solve()
 }
 
+fn solve_versions_offline(mod_config: &config::Config) -> Result<types::ModDB> {
+    let mut mod_solver = solver::ModSolver::new(mod_config);
+    for project in mod_config.projects() {
+        println!("Collecting {}", project.name);
+        mod_solver
+            .collect_project_and_dependencies(&project)
+            .inspect(|x| println!("  Found {} projects", x.len()))
+            .inspect_err(|e| println!("  Error: {e}"))?;
+    }
+    for project in mod_config.optional_projects() {
+        println!("Collecting {} (optional)", project.name);
+        let _ = mod_solver
+            .collect_project_and_dependencies(&project)
+            .inspect(|x| println!("  Found {} projects", x.len()))
+            .inspect_err(|e| println!("  Error: {e}"));
+    }
+    mod_solver.solve()
+}
+
 /// Install the files from src into dot_minecraft, deleting any previous files in datapacks, mods,
 /// and resourcepacks.
 fn prepare_version_files(
@@ -128,7 +147,7 @@ fn main() {
     let cli = Cli::parse();
     let mod_config = load_config(&cli).expect("Failure to load config");
     if cli.validate {
-        let client = labrinth::Client::new();
+        let client = mcmod_client::ModClient::new();
         let errors = client.validate_enums().expect("Failed to compare data");
         if !errors.is_empty() {
             println!("{errors:?}")

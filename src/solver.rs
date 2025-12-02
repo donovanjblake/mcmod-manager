@@ -3,19 +3,27 @@ use crate::error::{Error, Result};
 use crate::mcmod_client;
 use crate::types::{self, ModLink, ModLoader, ProjectId, ProjectSlug, VersionId};
 
+const CLIENT_CACHE_JSON: &str = "db_cache.json";
+
 /// Collects all mods and their dependencies according to the config
 pub struct ModSolver<'a> {
     mod_db: types::ModDB,
-    mod_client: mcmod_client::Client,
+    mod_client: mcmod_client::ModClient,
     mod_config: &'a config::Config,
 }
 
 impl<'a> ModSolver<'a> {
     /// Construct a new mod solver for a config
     pub fn new(mod_config: &'a config::Config) -> Self {
+        let client_cache = mod_config.paths.data.join(CLIENT_CACHE_JSON);
+        let mod_client = if client_cache.is_file() {
+            mcmod_client::ModClient::from_cache(&client_cache).expect("Failed to load cache")
+        } else {
+            mcmod_client::ModClient::new()
+        };
         ModSolver {
             mod_db: Default::default(),
-            mod_client: Default::default(),
+            mod_client,
             mod_config,
         }
     }
@@ -24,6 +32,7 @@ impl<'a> ModSolver<'a> {
     pub fn solve(mut self) -> Result<types::ModDB> {
         self.collect_required_projects()?;
         self.collect_optional_projects();
+        self.mod_client.write_cache(&self.mod_config.paths.data.join(CLIENT_CACHE_JSON)).expect("Failed to write cache");
         Ok(self.mod_db)
     }
 
@@ -64,6 +73,20 @@ impl<'a> ModSolver<'a> {
         Ok(deps)
     }
 
+    /// Collect a config project and its dependencies
+    pub fn collect_project_and_dependencies_offline(
+        &mut self,
+        project: &config::ConfigProject,
+    ) -> Result<Vec<VersionId>> {
+        let base_id = self.collect_config_project(project)?;
+        let mut deps = self.collect_dependencies(&base_id).inspect_err(|_| {
+            self.mod_db
+                .remove(&types::ModLink::VersionId(base_id.clone()))
+        })?;
+        deps.push(base_id);
+        Ok(deps)
+    } 
+
     /// Collect one project by its id
     fn collect_project_by_id(&mut self, project_id: &ProjectId) -> Result<ProjectId> {
         if let Some(project) = &mut self.mod_db.get_project_by_id(project_id) {
@@ -80,7 +103,7 @@ impl<'a> ModSolver<'a> {
         if let Some(project) = &mut self.mod_db.get_project_by_slug(project_slug) {
             return Ok(project.project_id.clone());
         }
-        let project = self.mod_client.fetch_project_by_slug(project_slug)?;
+        let project = self.mod_client.get_project_by_slug(project_slug)?;
         let project_id = project.project_id.clone();
         self.mod_db.add_project(project.clone());
         Ok(project_id)
@@ -97,8 +120,25 @@ impl<'a> ModSolver<'a> {
         Ok(version_id)
     }
 
+
+    /// Get a config project from offline cache
+    fn collect_config_project_offline(&mut self, project: &config::ConfigProject) -> Result<VersionId> {
+        if let Some(version) = 
+        let version = self.mod_client.fetch_project_version_latest(&project.name, project.game_version, project.loader)?;
+        let version_id = version.version_id.clone();
+        self.mod_db.add_version(version.clone());
+        Ok(version_id)
+    }
+    
+    
     /// Collect one project and a version by a project id
     fn collect_config_project(&mut self, project: &config::ConfigProject) -> Result<VersionId> {
+        let version = self.mod_client.fetch_project_version_latest(&project.name, project.game_version, project.loader)?;
+        let version_id = version.version_id.clone();
+        self.mod_db.add_version(version.clone());
+        Ok(version.version_id.clone())
+
+
         let project_id = match self.mod_db.get_project_by_slug(&project.name) {
             Some(x) => x.project_id.clone(),
             None => self.collect_project_by_slug(&project.name)?,
@@ -110,7 +150,7 @@ impl<'a> ModSolver<'a> {
         {
             Some(x) => x,
             None => {
-                let version = self.mod_client.get_project_version_latest(
+                let version = self.mod_client.fetch_project_version_latest(
                     &project.name,
                     project.game_version,
                     project.loader,

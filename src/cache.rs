@@ -1,13 +1,12 @@
 use std::path::PathBuf;
 
 use crate::error::Result;
-use crate::mcmod_client::Client;
+use crate::mcmod_client;
 use crate::types::*;
 
 pub struct ModFileManager {
     data_dir: PathBuf,
     dot_minecraft_dir: PathBuf,
-    client: Client,
 }
 
 impl ModFileManager {
@@ -23,7 +22,6 @@ impl ModFileManager {
         ModFileManager {
             data_dir,
             dot_minecraft_dir,
-            client: Default::default(),
         }
     }
 
@@ -47,7 +45,7 @@ impl ModFileManager {
 
     /// Download a file to the data cache directory
     pub fn download_file(&self, version_id: &VersionId, mod_file: &ModFile) -> Result<PathBuf> {
-        let buffer = self.client.download_file(&mod_file.url)?;
+        let buffer = mcmod_client::download_file(&mod_file.url)?;
         let path = self.cache_path(version_id, &mod_file.name);
         std::fs::create_dir_all(
             path.parent()
