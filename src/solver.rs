@@ -16,11 +16,10 @@ impl<'a> ModSolver<'a> {
     /// Construct a new mod solver for a config
     pub fn new(mod_config: &'a config::Config) -> Self {
         let client_cache = mod_config.paths.data.join(CLIENT_CACHE_JSON);
-        let mod_client = if client_cache.is_file() {
-            mcmod_client::ModClient::from_cache(&client_cache).expect("Failed to load cache")
-        } else {
-            mcmod_client::ModClient::new()
-        };
+        let mut mod_client = mcmod_client::ModClient::new();
+        if client_cache.is_file() {
+            mod_client.read_cache(&client_cache);
+        }
         ModSolver {
             mod_db: Default::default(),
             mod_client,
@@ -88,7 +87,7 @@ impl<'a> ModSolver<'a> {
     } 
 
     /// Collect one project by its id
-    fn collect_project_by_id(&mut self, project_id: &ProjectId) -> Result<ProjectId> {
+    fn collect_project_by_id(&mut self, project_id: ProjectId) -> Result<ProjectId> {
         if let Some(project) = &mut self.mod_db.get_project_by_id(project_id) {
             return Ok(project.project_id.clone());
         }
@@ -110,7 +109,7 @@ impl<'a> ModSolver<'a> {
     }
 
     /// Collect one version by its id
-    fn collect_version(&mut self, version_id: &VersionId) -> Result<VersionId> {
+    fn collect_version(&mut self, version_id: VersionId) -> Result<VersionId> {
         if let Some(version) = &mut self.mod_db.get_version(version_id) {
             return Ok(version.version_id.clone());
         }
@@ -123,10 +122,8 @@ impl<'a> ModSolver<'a> {
 
     /// Get a config project from offline cache
     fn collect_config_project_offline(&mut self, project: &config::ConfigProject) -> Result<VersionId> {
-        if let Some(version) = 
-        let version = self.mod_client.fetch_project_version_latest(&project.name, project.game_version, project.loader)?;
-        let version_id = version.version_id.clone();
-        self.mod_db.add_version(version.clone());
+        let version_id = self.mod_client.fetch_project_version_latest(&project.name, project.game_version, project.loader)?;
+        self.mod_db.add_version(self.mod_client.get_version(version_id).ok_or_else(|| Error::CacheMissError(version_id.into()))?.clone());
         Ok(version_id)
     }
     

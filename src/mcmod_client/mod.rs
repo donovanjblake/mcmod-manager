@@ -79,13 +79,13 @@ impl ModClient {
             .ok_or_else(|| Error::CacheMissError(project_slug.clone().into()))
     }
 
-    pub fn fetch_version(&mut self, version_id: &VersionId) -> Result<&ModVersion> {
+    pub fn fetch_version(&mut self, version_id: VersionId) -> Result<&ModVersion> {
         if !self.fetched.contains(&version_id.to_string()) {
             let version = self.labrinth_client.get_version(version_id.to_string().as_str())?;
             self.fetched.insert(version_id.inner().to_string());
             self.mod_db.add_version(version);
         }
-        self.mod_db.get_version(*version_id)
+        self.mod_db.get_version(version_id)
             .ok_or_else(|| Error::CacheMissError(version_id.clone().into()))
     }
 
