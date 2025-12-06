@@ -22,8 +22,9 @@ impl ModClient {
 
     pub fn read_cache(&mut self, cache_json: &PathBuf) -> Result<()> {
         let text = std::fs::read_to_string(cache_json)?;
-        let temp_db = types::ModDB::from_json(text)?;
-        self.mod_db.update(temp_db);
+        let temp_db = types::ModDB::from_json(text.as_str())?;
+        self.mod_db.extend(temp_db);
+        Ok(())
     }
 
     pub fn write_cache(&self, cache_json: &PathBuf) -> Result<()> {

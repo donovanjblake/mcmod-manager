@@ -313,6 +313,13 @@ impl ModDB {
         Ok(mod_db)
     }
 
+    /// Update this ModDB by taking values from another ModDB
+    pub fn extend(&mut self, other: ModDB) {
+        self.projects.extend(other.projects.into_iter());
+        self.project_slugs.extend(other.project_slugs.into_iter());
+        self.versions.extend(other.versions.into_iter());
+    }
+
     /// Insert a project into the database, and return the previous project at the same project_id.
     pub fn add_project(&mut self, project: ModProject) -> Option<ModProject> {
         self.project_slugs
