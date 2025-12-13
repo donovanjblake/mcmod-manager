@@ -24,21 +24,21 @@ impl ModDB {
 
     /// Update this ModDB by taking values from another ModDB
     pub fn extend(&mut self, other: ModDB) {
-        self.projects.extend(other.projects.into_iter());
-        self.project_slugs.extend(other.project_slugs.into_iter());
-        self.versions.extend(other.versions.into_iter());
+        self.projects.extend(other.projects);
+        self.project_slugs.extend(other.project_slugs);
+        self.versions.extend(other.versions);
     }
 
     /// Insert a project into the database, and return the previous project at the same project_id.
     pub fn add_project(&mut self, project: ModProject) -> Option<ModProject> {
         self.project_slugs
-            .insert(project.slug.clone(), project.project_id.clone());
-        self.projects.insert(project.project_id.clone(), project)
+            .insert(project.slug.clone(), project.project_id);
+        self.projects.insert(project.project_id, project)
     }
 
     /// Insert a version into the database, and return the previous version at the same version_id.
     pub fn add_version(&mut self, version: ModVersion) -> Option<ModVersion> {
-        self.versions.insert(version.version_id.clone(), version)
+        self.versions.insert(version.version_id, version)
     }
 
     /// Check if the given id exists in this database.
@@ -94,7 +94,7 @@ impl ModDB {
     ) -> Result<&ModVersion> {
         let project = self
             .get_project_by_slug(project_slug)
-            .ok_or_else(|| Error::CacheMissError(project_slug.clone().into()))?;
+            .ok_or_else(|| Error::CacheMiss(project_slug.clone().into()))?;
         let mut latest: Option<(VersionId, chrono::NaiveDateTime)> = None;
         for version_id in &project.version_ids {
             let Some(version) = self.get_version(*version_id) else {
@@ -112,8 +112,8 @@ impl ModDB {
         let latest_id = latest
             .ok_or_else(|| Error::NoMatchingVersion {
                 project_slug: project_slug.clone(),
-                game_version: game_version,
-                mod_loader: mod_loader,
+                game_version,
+                mod_loader,
             })?
             .0;
         Ok(self

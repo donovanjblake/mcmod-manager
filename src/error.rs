@@ -17,13 +17,13 @@ pub enum Error {
     Base64Decode(#[from] base64::DecodeError),
 
     #[error("Request or response error: {0}")]
-    RequestError(#[from] reqwest::Error),
+    Request(#[from] reqwest::Error),
 
     #[error("Response parsing error: {0}")]
-    ResponseParseError(serde_json::Error),
+    ResponseParse(serde_json::Error),
 
     #[error("Time parsing error: {0}")]
-    TimeParseError(#[from] chrono::ParseError),
+    TimeParse(#[from] chrono::ParseError),
 
     #[error("Mod id should be 8 characters: {0}")]
     ModIdTooLong(String),
@@ -35,7 +35,7 @@ pub enum Error {
     InvalidMinecraftVersion(String),
 
     #[error("Not in offline cache: {0:?}")]
-    CacheMissError(crate::types::ModLink),
+    CacheMiss(crate::types::ModLink),
 
     #[error(
         "Project {project_slug:?} has no version for game version {game_version} and mod loader {mod_loader}"

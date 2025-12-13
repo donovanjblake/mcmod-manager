@@ -82,7 +82,7 @@ impl ModClient {
         }
         self.mod_db
             .get_project_by_id(project_id)
-            .ok_or_else(|| Error::CacheMissError(project_id.clone().into()))
+            .ok_or_else(|| Error::CacheMiss(project_id.into()))
     }
 
     /// Fetch a project from the online database and return its information.
@@ -95,7 +95,7 @@ impl ModClient {
         }
         self.mod_db
             .get_project_by_slug(project_slug)
-            .ok_or_else(|| Error::CacheMissError(project_slug.clone().into()))
+            .ok_or_else(|| Error::CacheMiss(project_slug.clone().into()))
     }
 
     /// Fetch a project version from the online database and return its information.
@@ -109,12 +109,12 @@ impl ModClient {
         }
         self.mod_db
             .get_version(version_id)
-            .ok_or_else(|| Error::CacheMissError(version_id.clone().into()))
+            .ok_or_else(|| Error::CacheMiss(version_id.into()))
     }
 
     /// Validate that all online data is supported.
     pub fn validate_enums(&self) -> Result<Vec<crate::error::Error>> {
-        Ok(self.labrinth_client.validate_enums()?)
+        self.labrinth_client.validate_enums()
     }
 }
 

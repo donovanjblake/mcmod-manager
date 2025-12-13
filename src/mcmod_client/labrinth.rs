@@ -140,7 +140,7 @@ impl From<Project> for types::ModProject {
         Self {
             project_id: value.project_id,
             name: value.title,
-            slug: value.slug.into(),
+            slug: value.slug,
             version_ids: value.version_ids,
             game_versions: value.game_versions,
             loaders: value.loaders,

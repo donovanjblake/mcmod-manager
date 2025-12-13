@@ -335,10 +335,6 @@ fn base64_encode_id(value: u64) -> String {
 pub struct ProjectId(u64);
 
 impl ProjectId {
-    pub fn to_string(&self) -> String {
-        base64_encode_id(self.0)
-    }
-
     pub fn inner(&self) -> u64 {
         self.0
     }
@@ -359,7 +355,7 @@ impl From<ProjectId> for String {
 
 impl std::fmt::Display for ProjectId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{}", base64_encode_id(self.0))
     }
 }
 
@@ -406,12 +402,14 @@ impl std::fmt::Display for ProjectSlug {
 pub struct VersionId(u64);
 
 impl VersionId {
-    pub fn to_string(&self) -> String {
-        base64_encode_id(self.0)
-    }
-
     pub fn inner(&self) -> u64 {
         self.0
+    }
+}
+
+impl std::fmt::Display for VersionId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", base64_encode_id(self.0))
     }
 }
 
@@ -425,12 +423,6 @@ impl TryFrom<&str> for VersionId {
 impl From<VersionId> for String {
     fn from(value: VersionId) -> Self {
         value.to_string()
-    }
-}
-
-impl std::fmt::Display for VersionId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
     }
 }
 

@@ -69,7 +69,7 @@ impl<'a> ModSolver<'a> {
         let base_id = self.collect_config_project(project)?;
         let mut deps = self.collect_dependencies(base_id).inspect_err(|_| {
             self.mod_db
-                .remove(&types::ModLink::VersionId(base_id.clone()))
+                .remove(&types::ModLink::VersionId(base_id))
         })?;
         deps.push(base_id);
         Ok(deps)
@@ -78,10 +78,10 @@ impl<'a> ModSolver<'a> {
     /// Collect one project by its id
     fn collect_project_by_id(&mut self, project_id: ProjectId) -> Result<ProjectId> {
         if let Some(project) = &mut self.mod_db.get_project_by_id(project_id) {
-            return Ok(project.project_id.clone());
+            return Ok(project.project_id);
         }
         let project = self.mod_client.fetch_project_by_id(project_id)?;
-        let project_id = project.project_id.clone();
+        let project_id = project.project_id;
         self.mod_db.add_project(project.clone());
         Ok(project_id)
     }
@@ -89,10 +89,10 @@ impl<'a> ModSolver<'a> {
     /// Collect one version by its id
     fn collect_version(&mut self, version_id: VersionId) -> Result<VersionId> {
         if let Some(version) = &mut self.mod_db.get_version(version_id) {
-            return Ok(version.version_id.clone());
+            return Ok(version.version_id);
         }
         let version = self.mod_client.fetch_version(version_id)?;
-        let version_id = version.version_id.clone();
+        let version_id = version.version_id;
         self.mod_db.add_version(version.clone());
         Ok(version_id)
     }
@@ -108,7 +108,7 @@ impl<'a> ModSolver<'a> {
             self.mod_client
                 .get_db()
                 .get_version(version_id)
-                .ok_or_else(|| Error::CacheMissError(version_id.into()))?
+                .ok_or_else(|| Error::CacheMiss(version_id.into()))?
                 .clone(),
         );
         Ok(version_id)
@@ -120,7 +120,7 @@ impl<'a> ModSolver<'a> {
         let mod_project = self
             .mod_db
             .get_project_by_id(pid)
-            .ok_or_else(|| Error::CacheMissError(project_id.into()))?;
+            .ok_or_else(|| Error::CacheMiss(project_id.into()))?;
         if mod_project
             .loaders
             .contains(&self.mod_config.defaults.loader)
@@ -154,7 +154,7 @@ impl<'a> ModSolver<'a> {
     /// Collect all the dependencies of a version. If one is missing, they are not collected.
     fn collect_dependencies(&mut self, version_id: VersionId) -> Result<Vec<VersionId>> {
         let Some(version) = self.mod_db.get_version(version_id) else {
-            return Err(Error::CacheMissError(version_id.into()));
+            return Err(Error::CacheMiss(version_id.into()));
         };
         let deps = version.dependencies.clone();
         let mut found_deps = Vec::<VersionId>::new();
@@ -171,7 +171,7 @@ impl<'a> ModSolver<'a> {
             };
             if collected.is_err() {
                 for each in &found_deps {
-                    self.mod_db.remove(&each.clone().into());
+                    self.mod_db.remove(&(*each).into());
                 }
             }
             let collected = collected?;
@@ -184,7 +184,7 @@ impl<'a> ModSolver<'a> {
                 Err(e) => {
                     self.mod_db.remove(&collected.into());
                     for each in &found_deps {
-                        self.mod_db.remove(&each.clone().into());
+                        self.mod_db.remove(&(*each).into());
                     }
                     return Err(e);
                 }
@@ -257,7 +257,7 @@ impl<'a> ModSolverOffline<'a> {
         let base_id = self.collect_config_project(project)?;
         let mut deps = self.collect_dependencies(base_id).inspect_err(|_| {
             self.mod_db
-                .remove(&types::ModLink::VersionId(base_id.clone()))
+                .remove(&types::ModLink::VersionId(base_id))
         })?;
         deps.push(base_id);
         Ok(deps)
@@ -266,14 +266,14 @@ impl<'a> ModSolverOffline<'a> {
     /// Collect one project by its id
     fn collect_project_by_id(&mut self, project_id: ProjectId) -> Result<ProjectId> {
         if let Some(project) = &mut self.mod_db.get_project_by_id(project_id) {
-            return Ok(project.project_id.clone());
+            return Ok(project.project_id);
         }
         let project = self
             .mod_client
             .get_db()
             .get_project_by_id(project_id)
-            .ok_or_else(|| Error::CacheMissError(project_id.into()))?;
-        let project_id = project.project_id.clone();
+            .ok_or_else(|| Error::CacheMiss(project_id.into()))?;
+        let project_id = project.project_id;
         self.mod_db.add_project(project.clone());
         Ok(project_id)
     }
@@ -281,14 +281,14 @@ impl<'a> ModSolverOffline<'a> {
     /// Collect one version by its id
     fn collect_version(&mut self, version_id: VersionId) -> Result<VersionId> {
         if let Some(version) = &mut self.mod_db.get_version(version_id) {
-            return Ok(version.version_id.clone());
+            return Ok(version.version_id);
         }
         let version = self
             .mod_client
             .get_db()
             .get_version(version_id)
-            .ok_or_else(|| Error::CacheMissError(version_id.into()))?;
-        let version_id = version.version_id.clone();
+            .ok_or_else(|| Error::CacheMiss(version_id.into()))?;
+        let version_id = version.version_id;
         self.mod_db.add_version(version.clone());
         Ok(version_id)
     }
@@ -311,7 +311,7 @@ impl<'a> ModSolverOffline<'a> {
         let mod_project = self
             .mod_db
             .get_project_by_id(pid)
-            .ok_or_else(|| Error::CacheMissError(project_id.into()))?;
+            .ok_or_else(|| Error::CacheMiss(project_id.into()))?;
         if mod_project
             .loaders
             .contains(&self.mod_config.defaults.loader)
@@ -345,7 +345,7 @@ impl<'a> ModSolverOffline<'a> {
     /// Collect all the dependencies of a version offline. If one is missing, they are not collected.
     fn collect_dependencies(&mut self, version_id: VersionId) -> Result<Vec<VersionId>> {
         let Some(version) = self.mod_db.get_version(version_id) else {
-            return Err(Error::CacheMissError(version_id.into()));
+            return Err(Error::CacheMiss(version_id.into()));
         };
         let deps = version.dependencies.clone();
         let mut found_deps = Vec::<VersionId>::new();
@@ -362,7 +362,7 @@ impl<'a> ModSolverOffline<'a> {
             };
             if collected.is_err() {
                 for each in &found_deps {
-                    self.mod_db.remove(&each.clone().into());
+                    self.mod_db.remove(&(*each).into());
                 }
             }
             let collected = collected?;
@@ -375,7 +375,7 @@ impl<'a> ModSolverOffline<'a> {
                 Err(e) => {
                     self.mod_db.remove(&collected.into());
                     for each in &found_deps {
-                        self.mod_db.remove(&each.clone().into());
+                        self.mod_db.remove(&(*each).into());
                     }
                     return Err(e);
                 }
