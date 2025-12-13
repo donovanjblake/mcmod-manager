@@ -78,7 +78,7 @@ fn solve_versions(mod_config: &config::Config) -> Result<ModDB> {
 }
 
 fn solve_versions_offline(mod_config: &config::Config) -> Result<ModDB> {
-    let mut mod_solver = solver::ModSolverOffline::new(mod_config);
+    let mut mod_solver = solver::ModSolverOffline::new(mod_config)?;
     for project in mod_config.projects() {
         println!("Collecting {}", project.name);
         mod_solver

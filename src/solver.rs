@@ -1,7 +1,7 @@
 use crate::config;
 use crate::error::{Error, Result};
 use crate::mcmod_client;
-use crate::types::{self, ModLink, ModLoader, ProjectId, ProjectSlug, VersionId};
+use crate::types::{self, ModLink, ModLoader, ProjectId, VersionId};
 use crate::moddb::ModDB;
 
 const CLIENT_CACHE_JSON: &str = "db_cache.json";
@@ -19,7 +19,7 @@ impl<'a> ModSolver<'a> {
         let client_cache = mod_config.paths.data.join(CLIENT_CACHE_JSON);
         let mut mod_client = mcmod_client::ModClient::new();
         if client_cache.is_file() {
-            mod_client.read_cache(&client_cache);
+            let _ = mod_client.read_cache(&client_cache);
         }
         ModSolver {
             mod_db: Default::default(),
@@ -79,17 +79,6 @@ impl<'a> ModSolver<'a> {
             return Ok(project.project_id.clone());
         }
         let project = self.mod_client.fetch_project_by_id(project_id)?;
-        let project_id = project.project_id.clone();
-        self.mod_db.add_project(project.clone());
-        Ok(project_id)
-    }
-
-    /// Collect one project by its slug
-    fn collect_project_by_slug(&mut self, project_slug: &ProjectSlug) -> Result<ProjectId> {
-        if let Some(project) = &mut self.mod_db.get_project_by_slug(project_slug) {
-            return Ok(project.project_id.clone());
-        }
-        let project = self.mod_client.fetch_project_by_slug(project_slug)?;
         let project_id = project.project_id.clone();
         self.mod_db.add_project(project.clone());
         Ok(project_id)
@@ -203,17 +192,17 @@ pub struct ModSolverOffline<'a> {
 
 impl <'a> ModSolverOffline<'a> {
         /// Construct a new mod solver for a config
-    pub fn new(mod_config: &'a config::Config) -> Self {
+    pub fn new(mod_config: &'a config::Config) -> Result<Self> {
         let client_cache = mod_config.paths.data.join(CLIENT_CACHE_JSON);
         let mut mod_client = mcmod_client::ModClient::new();
         if client_cache.is_file() {
-            mod_client.read_cache(&client_cache);
+            mod_client.read_cache(&client_cache)?;
         }
-        ModSolverOffline {
+        Ok(ModSolverOffline {
             mod_db: Default::default(),
             mod_client,
             mod_config,
-        }
+        })
     }
 
     /// Solve all the dependencies of the config, consuming self
@@ -267,17 +256,6 @@ impl <'a> ModSolverOffline<'a> {
             return Ok(project.project_id.clone());
         }
         let project = self.mod_client.get_db().get_project_by_id(project_id).ok_or_else(|| Error::CacheMissError(project_id.into()))?;
-        let project_id = project.project_id.clone();
-        self.mod_db.add_project(project.clone());
-        Ok(project_id)
-    }
-
-    /// Collect one project by its slug
-    fn collect_project_by_slug(&mut self, project_slug: &ProjectSlug) -> Result<ProjectId> {
-        if let Some(project) = &mut self.mod_db.get_project_by_slug(project_slug) {
-            return Ok(project.project_id.clone());
-        }
-        let project = self.mod_client.get_db().get_project_by_slug(project_slug).ok_or_else(|| Error::CacheMissError(project_slug.clone().into()))?;
         let project_id = project.project_id.clone();
         self.mod_db.add_project(project.clone());
         Ok(project_id)
