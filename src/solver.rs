@@ -1,8 +1,8 @@
 use crate::config;
 use crate::error::{Error, Result};
 use crate::mcmod_client;
-use crate::types::{self, ModLink, ModLoader, ProjectId, VersionId};
 use crate::moddb::ModDB;
+use crate::types::{self, ModLink, ModLoader, ProjectId, VersionId};
 
 const CLIENT_CACHE_JSON: &str = "db_cache.json";
 
@@ -32,7 +32,9 @@ impl<'a> ModSolver<'a> {
     pub fn solve(mut self) -> Result<ModDB> {
         self.collect_required_projects()?;
         self.collect_optional_projects();
-        self.mod_client.write_cache(&self.mod_config.paths.data.join(CLIENT_CACHE_JSON)).expect("Failed to write cache");
+        self.mod_client
+            .write_cache(&self.mod_config.paths.data.join(CLIENT_CACHE_JSON))
+            .expect("Failed to write cache");
         Ok(self.mod_db)
     }
 
@@ -94,22 +96,31 @@ impl<'a> ModSolver<'a> {
         self.mod_db.add_version(version.clone());
         Ok(version_id)
     }
-    
-    
+
     /// Collect one project and a version by a project id
     fn collect_config_project(&mut self, project: &config::ConfigProject) -> Result<VersionId> {
-        let version_id = self.mod_client.fetch_project_version_latest(&project.name, project.game_version, project.loader)?;
-        self.mod_db.add_version(self.mod_client.get_db().get_version(version_id).ok_or_else(|| Error::CacheMissError(version_id.into()))?.clone());
+        let version_id = self.mod_client.fetch_project_version_latest(
+            &project.name,
+            project.game_version,
+            project.loader,
+        )?;
+        self.mod_db.add_version(
+            self.mod_client
+                .get_db()
+                .get_version(version_id)
+                .ok_or_else(|| Error::CacheMissError(version_id.into()))?
+                .clone(),
+        );
         Ok(version_id)
     }
 
     /// Collect the appropriate version of a project
     fn collect_project_version(&mut self, project_id: ProjectId) -> Result<VersionId> {
         let pid = self.collect_project_by_id(project_id)?;
-        let mod_project =
-            self.mod_db
-                .get_project_by_id(pid)
-                .ok_or_else(|| Error::CacheMissError(project_id.into()))?;
+        let mod_project = self
+            .mod_db
+            .get_project_by_id(pid)
+            .ok_or_else(|| Error::CacheMissError(project_id.into()))?;
         if mod_project
             .loaders
             .contains(&self.mod_config.defaults.loader)
@@ -190,8 +201,8 @@ pub struct ModSolverOffline<'a> {
     mod_config: &'a config::Config,
 }
 
-impl <'a> ModSolverOffline<'a> {
-        /// Construct a new mod solver for a config
+impl<'a> ModSolverOffline<'a> {
+    /// Construct a new mod solver for a config
     pub fn new(mod_config: &'a config::Config) -> Result<Self> {
         let client_cache = mod_config.paths.data.join(CLIENT_CACHE_JSON);
         let mut mod_client = mcmod_client::ModClient::new();
@@ -209,7 +220,9 @@ impl <'a> ModSolverOffline<'a> {
     pub fn solve(mut self) -> Result<ModDB> {
         self.collect_required_projects()?;
         self.collect_optional_projects();
-        self.mod_client.write_cache(&self.mod_config.paths.data.join(CLIENT_CACHE_JSON)).expect("Failed to write cache");
+        self.mod_client
+            .write_cache(&self.mod_config.paths.data.join(CLIENT_CACHE_JSON))
+            .expect("Failed to write cache");
         Ok(self.mod_db)
     }
 
@@ -248,14 +261,18 @@ impl <'a> ModSolverOffline<'a> {
         })?;
         deps.push(base_id);
         Ok(deps)
-    } 
+    }
 
     /// Collect one project by its id
     fn collect_project_by_id(&mut self, project_id: ProjectId) -> Result<ProjectId> {
         if let Some(project) = &mut self.mod_db.get_project_by_id(project_id) {
             return Ok(project.project_id.clone());
         }
-        let project = self.mod_client.get_db().get_project_by_id(project_id).ok_or_else(|| Error::CacheMissError(project_id.into()))?;
+        let project = self
+            .mod_client
+            .get_db()
+            .get_project_by_id(project_id)
+            .ok_or_else(|| Error::CacheMissError(project_id.into()))?;
         let project_id = project.project_id.clone();
         self.mod_db.add_project(project.clone());
         Ok(project_id)
@@ -266,16 +283,23 @@ impl <'a> ModSolverOffline<'a> {
         if let Some(version) = &mut self.mod_db.get_version(version_id) {
             return Ok(version.version_id.clone());
         }
-        let version = self.mod_client.get_db().get_version(version_id).ok_or_else(|| Error::CacheMissError(version_id.into()))?;
+        let version = self
+            .mod_client
+            .get_db()
+            .get_version(version_id)
+            .ok_or_else(|| Error::CacheMissError(version_id.into()))?;
         let version_id = version.version_id.clone();
         self.mod_db.add_version(version.clone());
         Ok(version_id)
     }
 
-
     /// Get a config project from offline cache
     fn collect_config_project(&mut self, project: &config::ConfigProject) -> Result<VersionId> {
-        let version = self.mod_client.get_db().find_project_version_latest(&project.name, project.game_version, project.loader)?.clone();
+        let version = self
+            .mod_client
+            .get_db()
+            .find_project_version_latest(&project.name, project.game_version, project.loader)?
+            .clone();
         let version_id = version.version_id;
         self.mod_db.add_version(version);
         Ok(version_id)
@@ -284,10 +308,10 @@ impl <'a> ModSolverOffline<'a> {
     /// Collect the appropriate version of a project
     fn collect_project_version(&mut self, project_id: ProjectId) -> Result<VersionId> {
         let pid = self.collect_project_by_id(project_id)?;
-        let mod_project =
-            self.mod_db
-                .get_project_by_id(pid)
-                .ok_or_else(|| Error::CacheMissError(project_id.into()))?;
+        let mod_project = self
+            .mod_db
+            .get_project_by_id(pid)
+            .ok_or_else(|| Error::CacheMissError(project_id.into()))?;
         if mod_project
             .loaders
             .contains(&self.mod_config.defaults.loader)
@@ -317,7 +341,6 @@ impl <'a> ModSolverOffline<'a> {
             )
         }
     }
-
 
     /// Collect all the dependencies of a version offline. If one is missing, they are not collected.
     fn collect_dependencies(&mut self, version_id: VersionId) -> Result<Vec<VersionId>> {

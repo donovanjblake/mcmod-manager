@@ -318,10 +318,12 @@ impl From<VersionId> for ModLink {
 fn base64_decode_id(value: &str) -> Result<u64> {
     let mut vec = base64::prelude::BASE64_STANDARD_NO_PAD.decode(value)?;
     if vec.len() > 8 {
-        return Err(Error::ModIdTooLong(value.into()))
+        return Err(Error::ModIdTooLong(value.into()));
     }
     vec.resize(size_of::<u64>(), 0);
-    Ok(u64::from_le_bytes(vec.split_at(size_of::<u64>()).0.try_into().unwrap()))
+    Ok(u64::from_le_bytes(
+        vec.split_at(size_of::<u64>()).0.try_into().unwrap(),
+    ))
 }
 
 fn base64_encode_id(value: u64) -> String {
@@ -329,7 +331,7 @@ fn base64_encode_id(value: u64) -> String {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
-#[serde(try_from="&str", into="String")]
+#[serde(try_from = "&str", into = "String")]
 pub struct ProjectId(u64);
 
 impl ProjectId {
@@ -362,7 +364,7 @@ impl std::fmt::Display for ProjectId {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
-#[serde(from="&str", into="String")]
+#[serde(from = "&str", into = "String")]
 pub struct ProjectSlug(String);
 
 impl ProjectSlug {
@@ -400,7 +402,7 @@ impl std::fmt::Display for ProjectSlug {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
-#[serde(try_from="&str", into="String")]
+#[serde(try_from = "&str", into = "String")]
 pub struct VersionId(u64);
 
 impl VersionId {

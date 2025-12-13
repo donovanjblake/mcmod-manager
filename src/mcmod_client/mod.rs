@@ -3,15 +3,14 @@ use std::path::PathBuf;
 
 use reqwest::blocking as rb;
 
+use crate::error::{Error, Result};
 use crate::moddb::ModDB;
 use crate::types::{self, ModProject, ModVersion, ProjectId, ProjectSlug, VersionId};
-use crate::error::{Error, Result};
 
 mod labrinth;
 
-
 /// A client for fetching mods from online or offline databases.
-/// 
+///
 /// To use this class online, call fetch_* methods before calling get_* methods.
 /// To use this class offline, do not call fetch_* methods.
 #[derive(Default)]
@@ -34,7 +33,7 @@ impl ModClient {
         self.mod_db.extend(temp_db);
         Ok(())
     }
-    
+
     /// Dump a database cache to the given path
     pub fn write_cache(&self, cache_json: &PathBuf) -> Result<()> {
         let text = serde_json::to_string(&self.mod_db)?;
@@ -54,7 +53,10 @@ impl ModClient {
         game_version: types::MinecraftVersion,
         mod_loader: types::ModLoader,
     ) -> Result<VersionId> {
-        if let Ok(version) = self.mod_db.find_project_version_latest(project_slug, game_version, mod_loader) {
+        if let Ok(version) =
+            self.mod_db
+                .find_project_version_latest(project_slug, game_version, mod_loader)
+        {
             return Ok(version.version_id);
         }
         let _project = self.fetch_project_by_slug(project_slug)?;
@@ -71,12 +73,15 @@ impl ModClient {
     /// Fetch a project from the online database and return its information.
     pub fn fetch_project_by_id(&mut self, project_id: ProjectId) -> Result<&ModProject> {
         if !self.fetched.contains(&project_id.to_string()) {
-            let project = self.labrinth_client.get_project(project_id.to_string().as_str())?;
+            let project = self
+                .labrinth_client
+                .get_project(project_id.to_string().as_str())?;
             self.fetched.insert(project_id.to_string());
             self.fetched.insert(project.slug.inner().clone());
             self.mod_db.add_project(project);
         }
-        self.mod_db.get_project_by_id(project_id)
+        self.mod_db
+            .get_project_by_id(project_id)
             .ok_or_else(|| Error::CacheMissError(project_id.clone().into()))
     }
 
@@ -88,18 +93,22 @@ impl ModClient {
             self.fetched.insert(project_slug.inner().clone());
             self.mod_db.add_project(project);
         }
-        self.mod_db.get_project_by_slug(project_slug)
+        self.mod_db
+            .get_project_by_slug(project_slug)
             .ok_or_else(|| Error::CacheMissError(project_slug.clone().into()))
     }
 
     /// Fetch a project version from the online database and return its information.
     pub fn fetch_version(&mut self, version_id: VersionId) -> Result<&ModVersion> {
         if !self.fetched.contains(&version_id.to_string()) {
-            let version = self.labrinth_client.get_version(version_id.to_string().as_str())?;
+            let version = self
+                .labrinth_client
+                .get_version(version_id.to_string().as_str())?;
             self.fetched.insert(version_id.inner().to_string());
             self.mod_db.add_version(version);
         }
-        self.mod_db.get_version(version_id)
+        self.mod_db
+            .get_version(version_id)
             .ok_or_else(|| Error::CacheMissError(version_id.clone().into()))
     }
 

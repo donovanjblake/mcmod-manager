@@ -1,7 +1,8 @@
+use crate::error::{Error, Result};
+use crate::types::{
+    MinecraftVersion, ModLink, ModLoader, ModProject, ModVersion, ProjectId, ProjectSlug, VersionId,
+};
 use std::collections::HashMap;
-use crate::error::{Result, Error};
-use crate::types::{ProjectId, ProjectSlug, VersionId, ModProject, ModVersion, ModLoader, MinecraftVersion, ModLink};
-
 
 /// An internal database of the projects and versions collected
 #[derive(Default, serde::Deserialize, serde::Serialize)]
@@ -85,21 +86,39 @@ impl ModDB {
     }
 
     /// Find the latest version of a project matching the given requirements and set it
-    pub fn find_project_version_latest(&self, project_slug: &ProjectSlug, game_version: MinecraftVersion, mod_loader: ModLoader) -> Result<&ModVersion> {
-        let project = self.get_project_by_slug(project_slug).ok_or_else(|| Error::CacheMissError(project_slug.clone().into()))?;
+    pub fn find_project_version_latest(
+        &self,
+        project_slug: &ProjectSlug,
+        game_version: MinecraftVersion,
+        mod_loader: ModLoader,
+    ) -> Result<&ModVersion> {
+        let project = self
+            .get_project_by_slug(project_slug)
+            .ok_or_else(|| Error::CacheMissError(project_slug.clone().into()))?;
         let mut latest: Option<(VersionId, chrono::NaiveDateTime)> = None;
         for version_id in &project.version_ids {
             let Some(version) = self.get_version(*version_id) else {
-                continue
+                continue;
             };
-            if !version.game_versions.contains(&game_version) || !version.loaders.contains(&mod_loader) {
+            if !version.game_versions.contains(&game_version)
+                || !version.loaders.contains(&mod_loader)
+            {
                 continue;
             }
             if latest.is_none_or(|x| x.1 < version.date_published) {
                 latest = Some((version.version_id, version.date_published))
             }
         }
-        let latest_id = latest.ok_or_else(|| Error::NoMatchingVersion { project_slug: project_slug.clone(), game_version: game_version, mod_loader: mod_loader })?.0;
-        Ok(self.versions.get(&latest_id).expect("The version was just added why does it not exist this is dumb."))
+        let latest_id = latest
+            .ok_or_else(|| Error::NoMatchingVersion {
+                project_slug: project_slug.clone(),
+                game_version: game_version,
+                mod_loader: mod_loader,
+            })?
+            .0;
+        Ok(self
+            .versions
+            .get(&latest_id)
+            .expect("The version was just added why does it not exist this is dumb."))
     }
 }

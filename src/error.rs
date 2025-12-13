@@ -1,4 +1,4 @@
-use crate::{types::{MinecraftVersion, ModLoader, ProjectSlug}};
+use crate::types::{MinecraftVersion, ModLoader, ProjectSlug};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -6,7 +6,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     #[error("io error: {0}")]
     IO(#[from] std::io::Error),
-    
+
     #[error("toml error: {0}")]
     TomlParse(#[from] toml::de::Error),
 
@@ -18,10 +18,10 @@ pub enum Error {
 
     #[error("Request or response error: {0}")]
     RequestError(#[from] reqwest::Error),
-    
+
     #[error("Response parsing error: {0}")]
     ResponseParseError(serde_json::Error),
-        
+
     #[error("Time parsing error: {0}")]
     TimeParseError(#[from] chrono::ParseError),
 
@@ -30,19 +30,21 @@ pub enum Error {
 
     #[error("Invalid mod loader: {0}")]
     InvalidLoader(String),
-    
+
     #[error("Invalid minecraft version: {0}")]
     InvalidMinecraftVersion(String),
 
     #[error("Not in offline cache: {0:?}")]
     CacheMissError(crate::types::ModLink),
 
-    #[error("Project {project_slug:?} has no version for game version {game_version} and mod loader {mod_loader}")]
+    #[error(
+        "Project {project_slug:?} has no version for game version {game_version} and mod loader {mod_loader}"
+    )]
     NoMatchingVersion {
         project_slug: ProjectSlug,
         game_version: MinecraftVersion,
         mod_loader: ModLoader,
-    }
+    },
 }
 
 impl Error {

@@ -3,16 +3,16 @@ use std::path::PathBuf;
 use clap::Parser;
 use error::Result;
 
-use types::*;
 use moddb::ModDB;
+use types::*;
 
 mod cache;
 mod config;
 mod error;
 mod mcmod_client;
+mod moddb;
 mod solver;
 mod types;
-mod moddb;
 
 /// The options passed to the program through the command line interface
 #[derive(Parser, Debug)]

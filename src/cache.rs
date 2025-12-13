@@ -29,8 +29,8 @@ impl ModFileManager {
     fn cache_path(&self, version_id: VersionId, filename: &String) -> PathBuf {
         let version_id = version_id.to_string();
         self.data_dir
-        .join(&version_id[0..2])
-        .join(&version_id[2..])
+            .join(&version_id[0..2])
+            .join(&version_id[2..])
             .join(filename)
     }
 
