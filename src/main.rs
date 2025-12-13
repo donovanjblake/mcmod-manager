@@ -3,7 +3,8 @@ use std::path::PathBuf;
 use clap::Parser;
 use error::Result;
 
-use crate::types::*;
+use types::*;
+use moddb::ModDB;
 
 mod cache;
 mod config;
@@ -11,6 +12,7 @@ mod error;
 mod mcmod_client;
 mod solver;
 mod types;
+mod moddb;
 
 /// The options passed to the program through the command line interface
 #[derive(Parser, Debug)]
@@ -37,6 +39,10 @@ struct Cli {
     /// Validate internal data types
     #[arg(long)]
     validate: bool,
+
+    /// Use the offline mod file cache
+    #[arg(long)]
+    offline: bool,
 }
 
 /// Load a config, overriding values as specified in cli
@@ -52,7 +58,7 @@ fn load_config(cli: &Cli) -> Result<config::Config> {
     Ok(mcmod)
 }
 
-fn solve_versions(mod_config: &config::Config) -> Result<types::ModDB> {
+fn solve_versions(mod_config: &config::Config) -> Result<ModDB> {
     let mut mod_solver = solver::ModSolver::new(mod_config);
     for project in mod_config.projects() {
         println!("Collecting {}", project.name);
@@ -71,8 +77,8 @@ fn solve_versions(mod_config: &config::Config) -> Result<types::ModDB> {
     mod_solver.solve()
 }
 
-fn solve_versions_offline(mod_config: &config::Config) -> Result<types::ModDB> {
-    let mut mod_solver = solver::ModSolver::new(mod_config);
+fn solve_versions_offline(mod_config: &config::Config) -> Result<ModDB> {
+    let mut mod_solver = solver::ModSolverOffline::new(mod_config);
     for project in mod_config.projects() {
         println!("Collecting {}", project.name);
         mod_solver
@@ -99,7 +105,7 @@ fn prepare_version_files(
     install: bool,
 ) -> Result<()> {
     let printed_name = mod_db
-        .get_project_by_id(&version.project_id)
+        .get_project_by_id(version.project_id)
         .map(|x| x.name.as_str())
         .unwrap_or(version.name.as_str());
     println!(
@@ -108,21 +114,21 @@ fn prepare_version_files(
     );
     for mod_file in &version.files {
         if mod_manager
-            .find_file(&version.version_id, &mod_file.name)
+            .find_file(version.version_id, &mod_file.name)
             .is_some()
         {
             println!("  Using cached file {}", mod_file.name);
         } else {
             println!("  Downloading file {}", mod_file.name);
             mod_manager
-                .download_file(&version.version_id, mod_file)
+                .download_file(version.version_id, mod_file)
                 .expect("Failure to get file");
         }
         if install {
             println!("  Installing");
             mod_manager
                 .install_file(
-                    &version.version_id,
+                    version.version_id,
                     mod_file,
                     version.loaders.first().copied(),
                 )
@@ -154,7 +160,11 @@ fn main() {
         }
     }
 
-    let mod_db = solve_versions(&mod_config).expect("Failure to resolve projects");
+    let mod_db = if !cli.offline {
+        solve_versions(&mod_config).expect("Failure to resolve projects")
+    } else {
+        solve_versions_offline(&mod_config).expect("Failure to resolve projects")
+    };
     if cli.download || cli.install {
         prepare_files(&mod_config, &mod_db, cli.install).expect("Failure to prepare files");
     }

@@ -3,36 +3,51 @@ use std::path::PathBuf;
 
 use reqwest::blocking as rb;
 
+use crate::moddb::ModDB;
 use crate::types::{self, ModProject, ModVersion, ProjectId, ProjectSlug, VersionId};
 use crate::error::{Error, Result};
 
 mod labrinth;
 
+
+/// A client for fetching mods from online or offline databases.
+/// 
+/// To use this class online, call fetch_* methods before calling get_* methods.
+/// To use this class offline, do not call fetch_* methods.
 #[derive(Default)]
 pub struct ModClient {
     fetched: HashSet<String>,
-    mod_db: types::ModDB,
+    mod_db: ModDB,
     labrinth_client: labrinth::Client,
 }
 
 impl ModClient {
+    /// Construct a new mod client
     pub fn new() -> Self {
         Default::default()
     }
 
+    /// Read the database cache at the given path
     pub fn read_cache(&mut self, cache_json: &PathBuf) -> Result<()> {
         let text = std::fs::read_to_string(cache_json)?;
-        let temp_db = types::ModDB::from_json(text.as_str())?;
+        let temp_db = ModDB::from_json(text.as_str())?;
         self.mod_db.extend(temp_db);
         Ok(())
     }
-
+    
+    /// Dump a database cache to the given path
     pub fn write_cache(&self, cache_json: &PathBuf) -> Result<()> {
         let text = serde_json::to_string(&self.mod_db)?;
         std::fs::write(cache_json, text)?;
         Ok(())
     }
 
+    /// Get the internal mod database
+    pub fn get_db(&self) -> &ModDB {
+        &self.mod_db
+    }
+
+    /// Fetch the latest version of a mod, and return its id.
     pub fn fetch_project_version_latest(
         &mut self,
         project_slug: &ProjectSlug,
@@ -42,7 +57,7 @@ impl ModClient {
         if let Ok(version) = self.mod_db.find_project_version_latest(project_slug, game_version, mod_loader) {
             return Ok(version.version_id);
         }
-        let _project = self.get_project_by_slug(project_slug)?;
+        let _project = self.fetch_project_by_slug(project_slug)?;
         let version = self.labrinth_client.get_project_version_latest(
             project_slug,
             game_version,
@@ -53,10 +68,7 @@ impl ModClient {
         Ok(version_id)
     }
 
-    pub fn get_version(&self, version_id: VersionId) -> Option<&ModVersion> {
-        self.mod_db.get_version(version_id)
-    }
-
+    /// Fetch a project from the online database and return its information.
     pub fn fetch_project_by_id(&mut self, project_id: ProjectId) -> Result<&ModProject> {
         if !self.fetched.contains(&project_id.to_string()) {
             let project = self.labrinth_client.get_project(project_id.to_string().as_str())?;
@@ -68,7 +80,8 @@ impl ModClient {
             .ok_or_else(|| Error::CacheMissError(project_id.clone().into()))
     }
 
-    pub fn get_project_by_slug(&mut self, project_slug: &ProjectSlug) -> Result<&ModProject> {
+    /// Fetch a project from the online database and return its information.
+    pub fn fetch_project_by_slug(&mut self, project_slug: &ProjectSlug) -> Result<&ModProject> {
         if !self.fetched.contains(project_slug.inner()) {
             let project = self.labrinth_client.get_project(project_slug.as_str())?;
             self.fetched.insert(project.project_id.inner().to_string());
@@ -79,6 +92,7 @@ impl ModClient {
             .ok_or_else(|| Error::CacheMissError(project_slug.clone().into()))
     }
 
+    /// Fetch a project version from the online database and return its information.
     pub fn fetch_version(&mut self, version_id: VersionId) -> Result<&ModVersion> {
         if !self.fetched.contains(&version_id.to_string()) {
             let version = self.labrinth_client.get_version(version_id.to_string().as_str())?;
@@ -89,6 +103,7 @@ impl ModClient {
             .ok_or_else(|| Error::CacheMissError(version_id.clone().into()))
     }
 
+    /// Validate that all online data is supported.
     pub fn validate_enums(&self) -> Result<Vec<crate::error::Error>> {
         Ok(self.labrinth_client.validate_enums()?)
     }
