@@ -129,7 +129,7 @@ struct Project {
     pub title: String,
     #[serde(rename = "id")]
     pub project_id: ProjectId,
-    // #[serde(rename = "versions")]
+    #[serde(rename = "versions")]
     pub version_ids: Vec<VersionId>,
     pub game_versions: Vec<MinecraftVersion>,
     pub loaders: Vec<ModLoader>,
@@ -248,6 +248,19 @@ struct LoaderInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_get_project() {
+        let client = Client::default();
+        let game_version = MinecraftVersion::from("1.21.2");
+        let loader = ModLoader::Minecraft;
+        let version = client
+            .get_project("faithful-32x")
+            .expect("Client should get a project");
+        if !version.game_versions.contains(&game_version) || !version.loaders.contains(&loader) {
+            panic!("Client should get the latest project version for a specific target {version:?}")
+        }
+    }
 
     #[test]
     fn test_get_project_version() {

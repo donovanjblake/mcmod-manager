@@ -315,29 +315,29 @@ impl From<VersionId> for ModLink {
     }
 }
 
-fn base64_decode_id(value: &str) -> Result<u32> {
+fn base64_decode_id(value: &str) -> Result<u64> {
     let mut vec = base64::prelude::BASE64_STANDARD_NO_PAD.decode(value)?;
-    if vec.len() > 4 {
+    if vec.len() > 8 {
         return Err(Error::ModIdTooLong(value.into()))
     }
-    vec.resize(size_of::<u32>(), 0);
-    Ok(u32::from_le_bytes(vec.split_at(size_of::<u32>()).0.try_into().unwrap()))
+    vec.resize(size_of::<u64>(), 0);
+    Ok(u64::from_le_bytes(vec.split_at(size_of::<u64>()).0.try_into().unwrap()))
 }
 
-fn base64_encode_id(value: u32) -> String {
-    base64::prelude::BASE64_STANDARD_NO_PAD.encode(value.to_le_bytes())
+fn base64_encode_id(value: u64) -> String {
+    base64::prelude::BASE64_STANDARD_NO_PAD.encode(value.to_le_bytes())[0..8].to_string()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 #[serde(try_from="&str", into="String")]
-pub struct ProjectId(u32);
+pub struct ProjectId(u64);
 
 impl ProjectId {
     pub fn to_string(&self) -> String {
         base64_encode_id(self.0)
     }
 
-    pub fn inner(&self) -> u32 {
+    pub fn inner(&self) -> u64 {
         self.0
     }
 }
@@ -401,14 +401,14 @@ impl std::fmt::Display for ProjectSlug {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 #[serde(try_from="&str", into="String")]
-pub struct VersionId(u32);
+pub struct VersionId(u64);
 
 impl VersionId {
     pub fn to_string(&self) -> String {
         base64_encode_id(self.0)
     }
 
-    pub fn inner(&self) -> u32 {
+    pub fn inner(&self) -> u64 {
         self.0
     }
 }

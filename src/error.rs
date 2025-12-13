@@ -25,7 +25,7 @@ pub enum Error {
     #[error("Time parsing error: {0}")]
     TimeParseError(#[from] chrono::ParseError),
 
-    #[error("Mod id should be 7 characters: {0}")]
+    #[error("Mod id should be 8 characters: {0}")]
     ModIdTooLong(String),
 
     #[error("Invalid mod loader: {0}")]
