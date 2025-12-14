@@ -33,7 +33,8 @@ impl Client {
     /// Get a project from the database
     pub fn get_project(&self, project: &str) -> Result<types::ModProject> {
         let response = self.get(format!("{API_MODRINTH}/v2/project/{project}"))?;
-        let project = serde_json::from_str::<Project>(response.text()?.as_str())?;
+        let mut project = serde_json::from_str::<Project>(response.text()?.as_str())?;
+        project.game_versions.retain(|x| !matches!(x, MinecraftVersion::Unknown { version:_ }));
         Ok(project.into())
     }
 
@@ -126,7 +127,7 @@ impl Client {
         let repsonse = self.get(format!("{API_MODRINTH}/v2/tag/game_version"))?;
         let values = serde_json::from_str::<Vec<GameVersionInfo>>(repsonse.text()?.as_str())?;
         for v in values {
-            if let Err(e) = MinecraftVersion::try_from(v.version) {
+            if let Err(e) = MinecraftVersion::try_parse_from(&v.version) {
                 result.push(e);
             }
         }

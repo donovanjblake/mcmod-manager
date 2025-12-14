@@ -18,7 +18,34 @@ pub enum MinecraftVersion {
 }
 
 impl MinecraftVersion {
-    pub fn error_for_invalid(self) -> Result<MinecraftVersion> {
+    /// Parse a minecraft version or return an error.
+    pub fn try_parse_from(value: &String) -> Result<Self> {
+        let parts: Vec<_> = value.split(&['.', '-']).collect();
+        let parse_u8 = |s: &str| -> Result<u8> {
+            s.parse::<u8>()
+                .map_err(|_| Error::InvalidMinecraftVersion(value.clone()))
+        };
+        match parts.len() {
+            2..4 => {
+                let (major, minor) = (parse_u8(parts[0])?, parse_u8(parts[1])?);
+                let patch = parts.get(2).map(|x| -> Result<Option<u8>> {
+                    if x.eq_ignore_ascii_case("x") {
+                        Ok(None)
+                    } else {
+                        Ok(Some(parse_u8(x)?))
+                    }
+                }).transpose()?.and_then(|x| x);
+                Ok(MinecraftVersion::Release {
+                    major,
+                    minor,
+                    patch,
+                })
+            }
+            _ => Err(Error::InvalidMinecraftVersion(value.clone())),
+        }
+    }
+
+    pub fn error_for_invalid(self) -> Result<Self> {
         match self {
             MinecraftVersion::Unknown { version } => Err(Error::InvalidMinecraftVersion(version)),
             x => Ok(x)
@@ -65,32 +92,9 @@ impl From<&MinecraftVersion> for String {
     }
 }
 
-impl TryFrom<String> for MinecraftVersion {
-    type Error = Error;
-    fn try_from(value: String) -> std::result::Result<Self, Self::Error> {
-        let parts: Vec<_> = value.split(&['.', '-']).collect();
-        let parse_u8 = |s: &str| -> Result<u8> {
-            s.parse::<u8>()
-                .map_err(|_| Error::InvalidMinecraftVersion(value.clone()))
-        };
-        match parts.len() {
-            2..4 => {
-                let (major, minor) = (parse_u8(parts[0])?, parse_u8(parts[1])?);
-                let patch = parts.get(2).map(|x| -> Result<Option<u8>> {
-                    if x.eq_ignore_ascii_case("x") {
-                        Ok(None)
-                    } else {
-                        Ok(Some(parse_u8(x)?))
-                    }
-                }).transpose()?.and_then(|x| x);
-                Ok(MinecraftVersion::Release {
-                    major,
-                    minor,
-                    patch,
-                })
-            }
-            _ => Err(Error::InvalidMinecraftVersion(value.clone())),
-        }
+impl From<String> for MinecraftVersion {
+    fn from(value: String) -> Self {
+        MinecraftVersion::try_parse_from(&value).unwrap_or_else(|_| MinecraftVersion::Unknown { version: value })
     }
 }
 
