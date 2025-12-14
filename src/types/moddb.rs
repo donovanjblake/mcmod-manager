@@ -89,7 +89,7 @@ impl ModDB {
     pub fn find_project_version_latest(
         &self,
         project_slug: &ProjectSlug,
-        game_version: MinecraftVersion,
+        game_version: &MinecraftVersion,
         mod_loader: ModLoader,
     ) -> Result<&ModVersion> {
         let project = self
@@ -100,7 +100,7 @@ impl ModDB {
             let Some(version) = self.get_version(*version_id) else {
                 continue;
             };
-            if !version.game_versions.contains(&game_version)
+            if !version.game_versions.contains(game_version)
                 || !version.loaders.contains(&mod_loader)
             {
                 continue;
@@ -112,7 +112,7 @@ impl ModDB {
         let latest_id = latest
             .ok_or_else(|| Error::NoMatchingVersion {
                 project_slug: project_slug.clone(),
-                game_version,
+                game_version: game_version.clone(),
                 mod_loader,
             })?
             .0;

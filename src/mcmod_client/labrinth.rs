@@ -48,7 +48,7 @@ impl Client {
     pub fn get_project_versions(
         &self,
         project: &ProjectSlug,
-        game_versions: &[MinecraftVersion],
+        game_versions: &[&MinecraftVersion],
         loaders: &[types::ModLoader],
     ) -> Result<Vec<types::ModVersion>> {
         let game_versions = game_versions
@@ -77,7 +77,7 @@ impl Client {
     pub fn get_project_version_latest(
         &self,
         project_slug: &ProjectSlug,
-        game_version: MinecraftVersion,
+        game_version: &MinecraftVersion,
         mod_loader: types::ModLoader,
     ) -> Result<types::ModVersion> {
         self.get_project_versions(project_slug, &[game_version], &[mod_loader])?
@@ -85,7 +85,7 @@ impl Client {
             .max_by(|x, y| x.date_published.cmp(&y.date_published))
             .ok_or_else(|| Error::NoMatchingVersion {
                 project_slug: project_slug.clone(),
-                game_version,
+                game_version: game_version.clone(),
                 mod_loader,
             })
     }
@@ -294,7 +294,7 @@ mod tests {
         let game_version = MinecraftVersion::from("1.21.2");
         let loader = ModLoader::Minecraft;
         let version = client
-            .get_project_version_latest(&ProjectSlug::from("faithful-32x"), game_version, loader)
+            .get_project_version_latest(&ProjectSlug::from("faithful-32x"), &game_version, loader)
             .expect("Client should get a project version");
         if !version.game_versions.contains(&game_version) || !version.loaders.contains(&loader) {
             panic!("Client should get the latest project version for a specific target {version:?}")
@@ -307,7 +307,7 @@ mod tests {
         let game_version = MinecraftVersion::from("1.21.2");
         let loader = ModLoader::Fabric;
         let version = client
-            .get_project_version_latest(&ProjectSlug::from("iris"), game_version, loader)
+            .get_project_version_latest(&ProjectSlug::from("iris"), &game_version, loader)
             .expect("Client should get a project version");
         if !version.game_versions.contains(&game_version) || !version.loaders.contains(&loader) {
             panic!("Client should get the latest project version for a specific target {version:?}")

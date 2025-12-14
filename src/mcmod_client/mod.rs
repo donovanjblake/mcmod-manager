@@ -49,7 +49,7 @@ impl ModClient {
     pub fn fetch_project_version_latest(
         &mut self,
         project_slug: &ProjectSlug,
-        game_version: types::MinecraftVersion,
+        game_version: &types::MinecraftVersion,
         mod_loader: types::ModLoader,
     ) -> Result<VersionId> {
         if let Ok(version) =

@@ -1,36 +1,53 @@
 use crate::error::{Error, Result};
 
 /// Minecraft version structure
-#[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq, Eq, Clone, Hash)]
 #[serde(try_from = "String", into = "String")]
-pub struct MinecraftVersion {
-    /// Major version number
-    major: u8,
-    /// Minor version number
-    minor: u8,
-    /// Patch version number
-    patch: Option<u8>,
+pub enum MinecraftVersion {
+    Release {
+        /// Major version number
+        major: u8,
+        /// Minor version number
+        minor: u8,
+        /// Patch version number
+        patch: Option<u8>,
+    },
+    Unknown {
+        version: String,
+    }
+}
+
+impl MinecraftVersion {
+    pub fn error_for_invalid(self) -> Result<MinecraftVersion> {
+        match self {
+            MinecraftVersion::Unknown { version } => Err(Error::InvalidMinecraftVersion(version)),
+            x => Ok(x)
+        }
+    }
 }
 
 impl std::fmt::Display for MinecraftVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.patch {
-            Some(patch) => {
-                write!(
-                    f,
-                    "{}.{}.{patch}",
-                    self.major,
-                    self.minor,
-                )
+        match self {
+            MinecraftVersion::Release { major, minor, patch } => {
+                match patch {
+                    Some(patch) => {
+                        write!(
+                            f,
+                            "{major}.{minor}.{patch}",
+                        )
+                    }
+                    None => {
+                        write!(
+                            f,
+                            "{major}.{minor}",
+                        )
+        
+                    }
+                }
             }
-            None => {
-                write!(
-                    f,
-                    "{}.{}",
-                    self.major,
-                    self.minor,
-                )
-
+            MinecraftVersion::Unknown { version } => {
+                write!(f,"{version}")
             }
         }
     }
@@ -38,6 +55,12 @@ impl std::fmt::Display for MinecraftVersion {
 
 impl From<MinecraftVersion> for String {
     fn from(value: MinecraftVersion) -> Self {
+        format!("{value}")
+    }
+}
+
+impl From<&MinecraftVersion> for String {
+    fn from(value: &MinecraftVersion) -> Self {
         format!("{value}")
     }
 }
@@ -60,7 +83,7 @@ impl TryFrom<String> for MinecraftVersion {
                         Ok(Some(parse_u8(x)?))
                     }
                 }).transpose()?.and_then(|x| x);
-                Ok(MinecraftVersion {
+                Ok(MinecraftVersion::Release {
                     major,
                     minor,
                     patch,
@@ -87,7 +110,7 @@ mod tests {
             .expect("MinecraftVersion shall be able to parse a version string");
         assert_eq!(
             parsed,
-            MinecraftVersion {
+            MinecraftVersion::Release {
                 major: 1,
                 minor: 23,
                 patch: Some(4),
@@ -100,7 +123,7 @@ mod tests {
         let parsed = MinecraftVersion::try_from("1.23.x").expect("MinecraftVersion shall be able to parse a version string where the patch version is 'x'");
         assert_eq!(
             parsed,
-            MinecraftVersion {
+            MinecraftVersion::Release {
                 major: 1,
                 minor: 23,
                 patch: None,
@@ -113,7 +136,7 @@ mod tests {
         let parsed = MinecraftVersion::try_from("1.23").expect("MinecraftVersion shall be able to parse a version string where the patch version is not given");
         assert_eq!(
             parsed,
-            MinecraftVersion {
+            MinecraftVersion::Release {
                 major: 1,
                 minor: 23,
                 patch: None,

@@ -102,7 +102,7 @@ impl<'a> ModSolver<'a> {
     fn collect_config_project(&mut self, project: &config::ConfigProject) -> Result<VersionId> {
         let version_id = self.client.fetch_project_version_latest(
             &project.name,
-            project.game_version,
+            &project.game_version,
             project.loader,
         )?;
         self.db.add_version(
@@ -125,19 +125,19 @@ impl<'a> ModSolver<'a> {
         if mod_project.loaders.contains(&self.config.defaults.loader) {
             self.collect_config_project(&config::ConfigProject {
                 name: mod_project.slug.clone(),
-                game_version: self.config.defaults.game_version,
+                game_version: self.config.defaults.game_version.clone(),
                 loader: self.config.defaults.loader,
             })
         } else if mod_project.loaders.contains(&ModLoader::Minecraft) {
             self.collect_config_project(&config::ConfigProject {
                 name: mod_project.slug.clone(),
-                game_version: self.config.defaults.game_version,
+                game_version: self.config.defaults.game_version.clone(),
                 loader: ModLoader::Minecraft,
             })
         } else if mod_project.loaders.contains(&ModLoader::Datapack) {
             self.collect_config_project(&config::ConfigProject {
                 name: mod_project.slug.clone(),
-                game_version: self.config.defaults.game_version,
+                game_version: self.config.defaults.game_version.clone(),
                 loader: ModLoader::Datapack,
             })
         } else {
@@ -294,7 +294,7 @@ impl<'a> ModSolverOffline<'a> {
         let version = self
             .client
             .get_db()
-            .find_project_version_latest(&project.name, project.game_version, project.loader)?
+            .find_project_version_latest(&project.name, &project.game_version, project.loader)?
             .clone();
         let version_id = version.version_id;
         self.db.add_version(version);
@@ -311,19 +311,19 @@ impl<'a> ModSolverOffline<'a> {
         if mod_project.loaders.contains(&self.config.defaults.loader) {
             self.collect_config_project(&config::ConfigProject {
                 name: mod_project.slug.clone(),
-                game_version: self.config.defaults.game_version,
+                game_version: self.config.defaults.game_version.clone(),
                 loader: self.config.defaults.loader,
             })
         } else if mod_project.loaders.contains(&ModLoader::Minecraft) {
             self.collect_config_project(&config::ConfigProject {
                 name: mod_project.slug.clone(),
-                game_version: self.config.defaults.game_version,
+                game_version: self.config.defaults.game_version.clone(),
                 loader: ModLoader::Minecraft,
             })
         } else if mod_project.loaders.contains(&ModLoader::Datapack) {
             self.collect_config_project(&config::ConfigProject {
                 name: mod_project.slug.clone(),
-                game_version: self.config.defaults.game_version,
+                game_version: self.config.defaults.game_version.clone(),
                 loader: ModLoader::Datapack,
             })
         } else {

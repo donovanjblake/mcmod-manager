@@ -179,22 +179,22 @@ mod tests {
         create_test_paths();
         let mut config = load_test_config();
         let expected_version = MinecraftVersion::from("1.21.4");
-        config.defaults.game_version = expected_version;
+        config.defaults.game_version = expected_version.clone();
         let projects = config.projects();
         let expected_projects = Vec::from([
             ConfigProject {
                 name: "blazeandcaves-advancements-pack".into(),
-                game_version: expected_version,
+                game_version: expected_version.clone(),
                 loader: ModLoader::Datapack,
             },
             ConfigProject {
                 name: "faithful-32x".into(),
-                game_version: expected_version,
+                game_version: expected_version.clone(),
                 loader: ModLoader::Minecraft,
             },
             ConfigProject {
                 name: "iris".into(),
-                game_version: expected_version,
+                game_version: expected_version.clone(),
                 loader: ModLoader::Fabric,
             },
         ]);
@@ -214,17 +214,17 @@ mod tests {
         let expected_projects = Vec::from([
             ConfigProject {
                 name: "blazeandcaves-advancements-pack".into(),
-                game_version: expected_version,
+                game_version: expected_version.clone(),
                 loader: ModLoader::Datapack,
             },
             ConfigProject {
                 name: "faithful-32x".into(),
-                game_version: expected_version,
+                game_version: expected_version.clone(),
                 loader: ModLoader::Minecraft,
             },
             ConfigProject {
                 name: "iris".into(),
-                game_version: expected_version,
+                game_version: expected_version.clone(),
                 loader: ModLoader::NeoForge,
             },
         ]);
@@ -243,17 +243,17 @@ mod tests {
         let expected_projects = Vec::from([
             ConfigProject {
                 name: "blazeandcaves-advancements-pack".into(),
-                game_version: expected_version,
+                game_version: expected_version.clone(),
                 loader: ModLoader::Datapack,
             },
             ConfigProject {
                 name: "faithful-32x".into(),
-                game_version: expected_version,
+                game_version: expected_version.clone(),
                 loader: ModLoader::Minecraft,
             },
             ConfigProject {
                 name: "iris".into(),
-                game_version: expected_version,
+                game_version: expected_version.clone(),
                 loader: ModLoader::Fabric,
             },
         ]);
@@ -272,12 +272,12 @@ mod tests {
         let expected_projects = Vec::from([
             ConfigProject {
                 name: "camps_castles_carriages".into(),
-                game_version: expected_version,
+                game_version: expected_version.clone(),
                 loader: ModLoader::Fabric,
             },
             ConfigProject {
                 name: "lithium".into(),
-                game_version: expected_version,
+                game_version: expected_version.clone(),
                 loader: ModLoader::Fabric,
             },
         ]);
