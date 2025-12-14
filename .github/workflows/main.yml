@@ -27,6 +27,7 @@ jobs:
       run: cargo build
     - uses: actions/upload-artifact@v6
       with:
+        if-no-files-found: error
         path: |
           target/debug/mcmod
           target/debug/mcmod.exe

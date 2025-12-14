@@ -60,7 +60,10 @@ jobs:
       run: cargo build --release
     - uses: actions/upload-artifact@v6
       with:
-        path: target/release/mcmod
+        if-no-files-found: error
+        path: |
+          target/release/mcmod
+          target/release/mcmod.exe
     - name: Make Tar Archive
       if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'}}
       run: |
@@ -73,7 +76,7 @@ jobs:
       if: ${{ matrix.os == 'windows-latest' }}
       run: |
         mkdir ${{ env.release-dir }}
-        cp target/release/mcmod ${{ env.release-dir }}
+        cp target/release/mcmod.exe ${{ env.release-dir }}
         cp README.md ${{ env.release-dir }}
         cp -r examples ${{ env.release-dir }}/examples
         zip -r ${{ env.release-dir }}.zip ${{ env.release-dir }}
