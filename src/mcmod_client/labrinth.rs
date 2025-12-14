@@ -1,8 +1,8 @@
 use crate::error::{Error, Result};
-use crate::types::{self, MinecraftVersion, ModLoader};
+use crate::types::{self, MinecraftVersion, ModLoader, ProjectId, ProjectSlug, VersionId};
 use reqwest::blocking as rb;
 
-const LABRINTH_URL: &str = "https://api.modrinth.com";
+const API_MODRINTH: &str = "https://api.modrinth.com";
 
 #[derive(Default)]
 pub struct Client {
@@ -10,12 +10,6 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new() -> Self {
-        Self {
-            client: rb::Client::new(),
-        }
-    }
-
     fn get<U>(&self, url: U) -> Result<rb::Response>
     where
         U: reqwest::IntoUrl,
@@ -38,14 +32,14 @@ impl Client {
 
     /// Get a project from the database
     pub fn get_project(&self, project: &str) -> Result<types::ModProject> {
-        let response = self.get(format!("{LABRINTH_URL}/v2/project/{project}"))?;
+        let response = self.get(format!("{API_MODRINTH}/v2/project/{project}"))?;
         let project = serde_json::from_str::<Project>(response.text()?.as_str())?;
         Ok(project.into())
     }
 
     /// Get a version from the database
     pub fn get_version(&self, version: &str) -> Result<types::ModVersion> {
-        let response = self.get(format!("{LABRINTH_URL}/v2/version/{version}"))?;
+        let response = self.get(format!("{API_MODRINTH}/v2/version/{version}"))?;
         let version = serde_json::from_str::<Version>(response.text()?.as_str())?;
         Ok(version.into())
     }
@@ -53,7 +47,7 @@ impl Client {
     /// Get the project versions matching the given query
     pub fn get_project_versions(
         &self,
-        project: &str,
+        project: &ProjectSlug,
         game_versions: &[MinecraftVersion],
         loaders: &[types::ModLoader],
     ) -> Result<Vec<types::ModVersion>> {
@@ -72,7 +66,7 @@ impl Client {
             ("loaders", format!("[{loaders}]")),
         ];
         let response = self.get_form(
-            format!("{LABRINTH_URL}/v2/project/{project}/version"),
+            format!("{API_MODRINTH}/v2/project/{project}/version"),
             &params,
         )?;
         let versions = serde_json::from_str::<Vec<Version>>(response.text()?.as_str())?;
@@ -82,19 +76,22 @@ impl Client {
     /// Get the latest version of a project for the target Minecraft version and mod loader
     pub fn get_project_version_latest(
         &self,
-        project: &str,
+        project_slug: &ProjectSlug,
         game_version: MinecraftVersion,
-        loader: types::ModLoader,
+        mod_loader: types::ModLoader,
     ) -> Result<types::ModVersion> {
-        self.get_project_versions(project, &[game_version], &[loader])?
+        self.get_project_versions(project_slug, &[game_version], &[mod_loader])?
             .into_iter()
             .max_by(|x, y| x.date_published.cmp(&y.date_published))
-            .ok_or_else(|| Error::VersionNotFound {
-                project: project.to_string(),
+            .ok_or_else(|| Error::NoMatchingVersion {
+                project_slug: project_slug.clone(),
+                game_version,
+                mod_loader,
             })
     }
 
     /// Download a single file
+    #[cfg(test)]
     pub fn download_file(&self, file_url: &str) -> Result<Vec<u8>> {
         Ok(self.get(file_url)?.bytes().map(|x| x.into())?)
     }
@@ -113,13 +110,13 @@ impl Client {
     }
 
     /// Validate all internal enumerations are up to date
-    pub fn validate_enums(&self) -> Result<Vec<Error>> {
-        let mut result = Vec::<Error>::new();
-        let repsonse = self.get(format!("{LABRINTH_URL}/v2/tag/loader"))?;
+    pub fn validate_enums(&self) -> Result<Vec<crate::error::Error>> {
+        let mut result = Vec::<crate::error::Error>::new();
+        let repsonse = self.get(format!("{API_MODRINTH}/v2/tag/loader"))?;
         let values = serde_json::from_str::<Vec<LoaderInfo>>(repsonse.text()?.as_str())?;
         for v in values {
             if let Err(e) = ModLoader::try_from(v.name.as_str()) {
-                result.push(e)
+                result.push(e);
             }
         }
         Ok(result)
@@ -128,24 +125,25 @@ impl Client {
 
 #[derive(serde::Deserialize)]
 struct Project {
-    pub slug: String,
+    pub slug: ProjectSlug,
     pub title: String,
+    #[allow(clippy::struct_field_names)]
     #[serde(rename = "id")]
-    pub project_id: String,
-    // #[serde(rename = "versions")]
-    // pub version_ids: Vec<String>,
-    // pub game_versions: Vec<MinecraftVersion>,
+    pub project_id: ProjectId,
+    #[serde(rename = "versions")]
+    pub version_ids: Vec<VersionId>,
+    pub game_versions: Vec<MinecraftVersion>,
     pub loaders: Vec<ModLoader>,
 }
 
 impl From<Project> for types::ModProject {
     fn from(value: Project) -> Self {
         Self {
-            project_id: value.project_id.into(),
+            project_id: value.project_id,
             name: value.title,
-            slug: value.slug.into(),
-            // version_ids: value.version_ids.into_iter().map(|x| x.into()).collect(),
-            // game_versions: value.game_versions,
+            slug: value.slug,
+            version_ids: value.version_ids,
+            game_versions: value.game_versions,
             loaders: value.loaders,
         }
     }
@@ -154,11 +152,11 @@ impl From<Project> for types::ModProject {
 #[derive(serde::Deserialize)]
 struct Version {
     pub name: String,
+    #[allow(clippy::struct_field_names)]
     #[serde(rename = "id")]
-    pub version_id: String,
-    pub project_id: String,
+    pub version_id: VersionId,
+    pub project_id: ProjectId,
     pub dependencies: Vec<Dependency>,
-    #[cfg(test)]
     pub game_versions: Vec<MinecraftVersion>,
     pub date_published: DatePublished,
     pub loaders: Vec<ModLoader>,
@@ -168,10 +166,9 @@ struct Version {
 impl From<Version> for types::ModVersion {
     fn from(value: Version) -> Self {
         Self {
-            project_id: value.project_id.into(),
-            version_id: value.version_id.into(),
+            project_id: value.project_id,
+            version_id: value.version_id,
             name: value.name,
-            #[cfg(test)]
             game_versions: value.game_versions,
             loaders: value.loaders,
             dependencies: value
@@ -187,21 +184,22 @@ impl From<Version> for types::ModVersion {
 
 #[derive(serde::Deserialize)]
 struct Dependency {
-    pub version_id: Option<String>,
-    pub project_id: Option<String>,
-    pub dependency_type: DependencyKind,
+    pub version_id: Option<VersionId>,
+    pub project_id: Option<ProjectId>,
+    #[serde(rename = "dependency_type")]
+    pub kind: DependencyKind,
 }
 
 impl Dependency {
     fn into_link(self) -> Option<types::ModLink> {
-        if !matches!(self.dependency_type, DependencyKind::Required) {
+        if !matches!(self.kind, DependencyKind::Required) {
             return None;
         }
         #[allow(clippy::manual_map)]
         if let Some(version_id) = self.version_id {
-            Some(types::ModLink::VersionId(version_id.into()))
+            Some(version_id.into())
         } else if let Some(project_id) = self.project_id {
-            Some(types::ModLink::ProjectId(project_id.into()))
+            Some(project_id.into())
         } else {
             None
         }
@@ -255,12 +253,25 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_get_project_version() {
-        let client = Client::new();
+    fn test_get_project() {
+        let client = Client::default();
         let game_version = MinecraftVersion::from("1.21.2");
         let loader = ModLoader::Minecraft;
         let version = client
-            .get_project_version_latest("faithful-32x", game_version, loader)
+            .get_project("faithful-32x")
+            .expect("Client should get a project");
+        if !version.game_versions.contains(&game_version) || !version.loaders.contains(&loader) {
+            panic!("Client should get the latest project version for a specific target {version:?}")
+        }
+    }
+
+    #[test]
+    fn test_get_project_version() {
+        let client = Client::default();
+        let game_version = MinecraftVersion::from("1.21.2");
+        let loader = ModLoader::Minecraft;
+        let version = client
+            .get_project_version_latest(&ProjectSlug::from("faithful-32x"), game_version, loader)
             .expect("Client should get a project version");
         if !version.game_versions.contains(&game_version) || !version.loaders.contains(&loader) {
             panic!("Client should get the latest project version for a specific target {version:?}")
@@ -269,11 +280,11 @@ mod tests {
 
     #[test]
     fn test_download_files() {
-        let client = Client::new();
+        let client = Client::default();
         let game_version = MinecraftVersion::from("1.21.2");
         let loader = ModLoader::Fabric;
         let version = client
-            .get_project_version_latest("iris", game_version, loader)
+            .get_project_version_latest(&ProjectSlug::from("iris"), game_version, loader)
             .expect("Client should get a project version");
         if !version.game_versions.contains(&game_version) || !version.loaders.contains(&loader) {
             panic!("Client should get the latest project version for a specific target {version:?}")
@@ -285,7 +296,7 @@ mod tests {
 
     #[test]
     fn test_validate_data() {
-        let client = Client::new();
+        let client = Client::default();
         client
             .validate_enums()
             .expect("Client shall be able to get and compare data");

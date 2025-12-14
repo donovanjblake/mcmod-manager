@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use base64::Engine;
 
 use crate::error::{Error, Result};
 
@@ -11,6 +11,7 @@ use crate::error::{Error, Result};
     Debug,
     Clone,
     Copy,
+    Hash,
     clap::ValueEnum,
     strum::EnumString,
     strum::Display,
@@ -79,7 +80,7 @@ pub enum ModLoader {
 }
 
 /// Minecraft version structure
-#[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq, Eq, Clone, Copy, Hash)]
 #[serde(try_from = "String", into = "String")]
 pub enum MinecraftVersion {
     Release {
@@ -110,7 +111,7 @@ pub enum MinecraftVersion {
     },
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq, Eq, Clone, Copy, Hash)]
 #[serde(try_from = "String", into = "String")]
 pub enum MinecraftReleaseSuffix {
     /// No release suffix
@@ -143,10 +144,8 @@ impl std::fmt::Display for MinecraftVersion {
                     "{}w{}{}",
                     year,
                     week,
-                    ident.map_or_else(
-                        || String::from(""),
-                        |x| String::from_utf8(vec![x]).expect("Invalid utf-8 in snapshot")
-                    )
+                    ident.map_or_else(String::new, |x| String::from_utf8(vec![x])
+                        .expect("Invalid utf-8 in snapshot"))
                 )
             }
             MinecraftVersion::Beta {
@@ -178,7 +177,7 @@ impl std::fmt::Display for MinecraftReleaseSuffix {
 
 impl From<MinecraftReleaseSuffix> for String {
     fn from(value: MinecraftReleaseSuffix) -> Self {
-        format!("{}", value)
+        format!("{value}")
     }
 }
 
@@ -205,7 +204,7 @@ impl TryFrom<String> for MinecraftReleaseSuffix {
 
 impl From<MinecraftVersion> for String {
     fn from(value: MinecraftVersion) -> Self {
-        format!("{}", value)
+        format!("{value}")
     }
 }
 
@@ -215,13 +214,13 @@ impl TryFrom<String> for MinecraftVersion {
         let parts: Vec<_> = value.split(&['.', '-']).collect();
         let parse_u8 = |s: &str| -> Result<u8> {
             s.parse::<u8>()
-                .map_err(|_| Error::InvalidMinecraftVersion(value.to_string()))
+                .map_err(|_| Error::InvalidMinecraftVersion(value.clone()))
         };
         match parts.len() {
             1 => {
-                let parts: Vec<_> = value.split("w").collect();
+                let parts: Vec<_> = value.split('w').collect();
                 if parts.len() != 2 {
-                    return Err(Error::InvalidMinecraftVersion(value.to_string()));
+                    return Err(Error::InvalidMinecraftVersion(value.clone()));
                 }
                 let year = parse_u8(parts[0])?;
                 let week = parse_u8(parts[1].get(0..2).expect(""))?;
@@ -249,7 +248,7 @@ impl TryFrom<String> for MinecraftVersion {
                     (None, None) => (None, MinecraftReleaseSuffix::None),
                     (Some(x), None) => {
                         if value.contains('-') {
-                            (None, MinecraftReleaseSuffix::try_from(x.to_string())?)
+                            (None, MinecraftReleaseSuffix::try_from((*x).to_string())?)
                         } else if x.eq_ignore_ascii_case("x") {
                             (None, MinecraftReleaseSuffix::None)
                         } else {
@@ -258,7 +257,7 @@ impl TryFrom<String> for MinecraftVersion {
                     }
                     (Some(x), Some(y)) => (
                         Some(parse_u8(x)?),
-                        MinecraftReleaseSuffix::try_from(y.to_string())?,
+                        MinecraftReleaseSuffix::try_from((*y).to_string())?,
                     ),
                     (None, Some(_)) => {
                         unreachable!("Can't have [3] without [2]")
@@ -271,7 +270,7 @@ impl TryFrom<String> for MinecraftVersion {
                     suffix,
                 })
             }
-            _ => Err(Error::InvalidMinecraftVersion(value.to_string())),
+            _ => Err(Error::InvalidMinecraftVersion(value.clone())),
         }
     }
 }
@@ -289,83 +288,7 @@ impl From<&str> for MinecraftVersion {
     }
 }
 
-/// An internal database of the projects and versions collected
-#[derive(Default)]
-pub struct ModDB {
-    /// A mapping of project ids to project data
-    projects: HashMap<ProjectId, ModProject>,
-    /// A mapping of version ids to version data
-    versions: HashMap<VersionId, ModVersion>,
-    /// A mapping of project slugs to project ids
-    project_slugs: HashMap<ProjectSlug, ProjectId>,
-    /// A map of project ids to preferred versions
-    project_versions: HashMap<ProjectId, VersionId>,
-}
-
-impl ModDB {
-    /// Insert a project into the database, and return the previous project at the same project_id
-    pub fn add_project(&mut self, project: ModProject) -> Option<ModProject> {
-        self.project_slugs
-            .insert(project.slug.clone(), project.project_id.clone());
-        self.projects.insert(project.project_id.clone(), project)
-    }
-    /// Insert a version into the database, and return the previous version at the same version_id
-    pub fn add_version(&mut self, version: ModVersion) -> Option<ModVersion> {
-        self.versions.insert(version.version_id.clone(), version)
-    }
-    pub fn contains_key(&self, mod_link: &ModLink) -> bool {
-        match mod_link {
-            ModLink::ProjectId(x) => self.projects.contains_key(x),
-            ModLink::ProjectSlug(x) => self.project_slugs.contains_key(x),
-            ModLink::VersionId(x) => self.versions.contains_key(x),
-        }
-    }
-    pub fn remove(&mut self, mod_link: &ModLink) {
-        match mod_link {
-            ModLink::ProjectId(x) => {
-                self.projects.remove(x);
-            }
-            ModLink::ProjectSlug(x) => {
-                self.project_slugs.remove(x);
-            }
-            ModLink::VersionId(x) => {
-                self.versions.remove(x);
-            }
-        }
-    }
-    /// Get a vector of all collected versions
-    pub fn get_versions(&self) -> Vec<&ModVersion> {
-        self.versions.values().collect()
-    }
-    /// Get the project of a given id
-    pub fn get_project_by_id(&self, project_id: &ProjectId) -> Option<&ModProject> {
-        self.projects.get(project_id)
-    }
-    /// Get the project of a given slug
-    pub fn get_project_by_slug(&self, project_slug: &ProjectSlug) -> Option<&ModProject> {
-        self.projects.get(self.project_slugs.get(project_slug)?)
-    }
-    /// Get the version of a given id
-    pub fn get_version(&self, version_id: &VersionId) -> Option<&ModVersion> {
-        self.versions.get(version_id)
-    }
-    /// Set the preferred version for a project, and return the previous preferred version
-    pub fn set_preferred_version(
-        &mut self,
-        project_id: ProjectId,
-        version_id: VersionId,
-    ) -> Option<VersionId> {
-        self.project_versions.insert(project_id, version_id)
-    }
-    /// Get the preferred version of a project by its id
-    pub fn get_preferred_by_id(&self, project_id: &ProjectId) -> Option<&ModVersion> {
-        self.project_versions
-            .get(project_id)
-            .and_then(|x| self.versions.get(x))
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub enum ModLink {
     ProjectId(ProjectId),
     ProjectSlug(ProjectSlug),
@@ -390,39 +313,61 @@ impl From<VersionId> for ModLink {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ProjectId(String);
+fn base64_decode_id(value: &str) -> Result<u64> {
+    let mut vec = base64::prelude::BASE64_STANDARD_NO_PAD.decode(value)?;
+    if vec.len() > 8 {
+        return Err(Error::ModIdTooLong(value.into()));
+    }
+    vec.resize(size_of::<u64>(), 0);
+    Ok(u64::from_le_bytes(
+        vec.split_at(size_of::<u64>()).0.try_into().unwrap(),
+    ))
+}
+
+fn base64_encode_id(value: u64) -> String {
+    base64::prelude::BASE64_STANDARD_NO_PAD.encode(value.to_le_bytes())[0..8].to_string()
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+#[serde(try_from = "&str", into = "String")]
+pub struct ProjectId(u64);
 
 impl ProjectId {
-    pub fn as_str(&self) -> &str {
-        self.0.as_str()
+    pub fn inner(self) -> u64 {
+        self.0
     }
 }
 
-impl From<String> for ProjectId {
-    fn from(value: String) -> Self {
-        Self(value)
+impl TryFrom<&str> for ProjectId {
+    type Error = Error;
+    fn try_from(value: &str) -> Result<Self> {
+        Ok(Self(base64_decode_id(value)?))
     }
 }
 
 impl From<ProjectId> for String {
     fn from(value: ProjectId) -> Self {
-        value.0
+        value.to_string()
     }
 }
 
 impl std::fmt::Display for ProjectId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{}", base64_encode_id(self.0))
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+#[serde(from = "&str", into = "String")]
 pub struct ProjectSlug(String);
 
 impl ProjectSlug {
     pub fn as_str(&self) -> &str {
         self.0.as_str()
+    }
+
+    pub fn inner(&self) -> &String {
+        &self.0
     }
 }
 
@@ -450,57 +395,82 @@ impl std::fmt::Display for ProjectSlug {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct VersionId(String);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+#[serde(try_from = "&str", into = "String")]
+pub struct VersionId(u64);
 
 impl VersionId {
-    pub fn as_str(&self) -> &str {
-        self.0.as_str()
-    }
-}
-
-impl From<String> for VersionId {
-    fn from(value: String) -> Self {
-        Self(value)
-    }
-}
-
-impl From<VersionId> for String {
-    fn from(value: VersionId) -> Self {
-        value.0
+    pub fn inner(self) -> u64 {
+        self.0
     }
 }
 
 impl std::fmt::Display for VersionId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{}", base64_encode_id(self.0))
     }
 }
 
-#[derive(Debug)]
+impl TryFrom<&str> for VersionId {
+    type Error = Error;
+    fn try_from(value: &str) -> Result<Self> {
+        Ok(Self(base64_decode_id(value)?))
+    }
+}
+
+impl From<VersionId> for String {
+    fn from(value: VersionId) -> Self {
+        value.to_string()
+    }
+}
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct ModProject {
     pub project_id: ProjectId,
     pub name: String,
     pub slug: ProjectSlug,
-    // pub version_ids: Vec<VersionId>,
-    // pub game_versions: Vec<MinecraftVersion>,
+    pub version_ids: Vec<VersionId>,
+    pub game_versions: Vec<MinecraftVersion>,
     pub loaders: Vec<ModLoader>,
 }
 
-#[derive(Debug)]
+mod serde_naive_date_time {
+    use chrono::{DateTime, NaiveDateTime, Utc};
+    use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
+
+    pub fn serialize<S: Serializer>(
+        time: &NaiveDateTime,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error> {
+        DateTime::<Utc>::from_naive_utc_and_offset(*time, Utc)
+            .to_rfc3339()
+            .serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<NaiveDateTime, D::Error> {
+        let time: String = Deserialize::deserialize(deserializer)?;
+        Ok(DateTime::parse_from_rfc3339(&time)
+            .map_err(D::Error::custom)?
+            .naive_utc())
+    }
+}
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct ModVersion {
     pub project_id: ProjectId,
     pub version_id: VersionId,
     pub name: String,
-    #[cfg(test)]
     pub game_versions: Vec<MinecraftVersion>,
     pub loaders: Vec<ModLoader>,
     pub files: Vec<ModFile>,
     pub dependencies: Vec<ModLink>,
+    #[serde(with = "serde_naive_date_time")]
     pub date_published: chrono::NaiveDateTime,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct ModFile {
     pub url: String,
     pub name: String,
