@@ -25,7 +25,7 @@ jobs:
     name: Cargo Build
     runs-on: ubuntu-latest
     env:
-      release-dir: mcmod_manager-${{ github.event.ref }}
+      release-dir: mcmod_manager-${{ github.ref_name }}
     steps:
     - uses: actions/checkout@v5
     - name: Cargo Build
