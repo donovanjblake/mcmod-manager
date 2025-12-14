@@ -24,12 +24,25 @@ pub struct Config {
 impl Config {
     /// Load the config from TOML text
     pub fn loads(text: &str) -> Result<Config> {
-        let result = toml::from_str::<Self>(text)?;
+        let mut result = toml::from_str::<Self>(text)?;
         assert!(
             result.paths.dot_minecraft.is_dir(),
             "{}: directory does not exist",
             result.paths.dot_minecraft.display()
         );
+        result.defaults.game_version = result.defaults.game_version.error_for_invalid()?;
+        for project in &mut result.projects {
+            if project.1.game_version.is_some() {
+                project.1.game_version =
+                    Some(project.1.game_version.take().unwrap().error_for_invalid()?);
+            }
+        }
+        for project in &mut result.optional_projects {
+            if project.1.game_version.is_some() {
+                project.1.game_version =
+                    Some(project.1.game_version.take().unwrap().error_for_invalid()?);
+            }
+        }
         Ok(result)
     }
 

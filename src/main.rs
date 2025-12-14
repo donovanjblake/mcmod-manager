@@ -146,8 +146,16 @@ fn prepare_files(mod_config: &config::Config, mod_db: &ModDB, install: bool) {
     }
 }
 
+fn parse_cli() -> Result<Cli> {
+    let mut cli = Cli::parse();
+    if cli.game_version.is_some() {
+        cli.game_version = Some(cli.game_version.take().unwrap().error_for_invalid()?);
+    }
+    Ok(cli)
+}
+
 fn main() {
-    let cli = Cli::parse();
+    let cli = parse_cli().expect("Failure to parse cli");
     let mod_config = load_config(&cli).expect("Failure to load config");
     if cli.validate {
         let client = mcmod_client::ModClient::new();
