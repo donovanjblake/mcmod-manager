@@ -34,7 +34,9 @@ impl Client {
     pub fn get_project(&self, project: &str) -> Result<types::ModProject> {
         let response = self.get(format!("{API_MODRINTH}/v2/project/{project}"))?;
         let mut project = serde_json::from_str::<Project>(response.text()?.as_str())?;
-        project.game_versions.retain(|x| !matches!(x, MinecraftVersion::Unknown { version:_ }));
+        project
+            .game_versions
+            .retain(|x| !matches!(x, MinecraftVersion::Unknown { version: _ }));
         Ok(project.into())
     }
 

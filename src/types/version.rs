@@ -14,41 +14,46 @@ pub enum MinecraftVersion {
     },
     Unknown {
         version: String,
-    }
+    },
 }
 
 impl MinecraftVersion {
     /// Parse a minecraft version or return an error.
-    pub fn try_parse_from(value: &String) -> Result<Self> {
+    pub fn try_parse_from(value: &str) -> Result<Self> {
         let parts: Vec<_> = value.split(&['.', '-']).collect();
         let parse_u8 = |s: &str| -> Result<u8> {
             s.parse::<u8>()
-                .map_err(|_| Error::InvalidMinecraftVersion(value.clone()))
+                .map_err(|_| Error::InvalidMinecraftVersion(value.into()))
         };
         match parts.len() {
             2..4 => {
                 let (major, minor) = (parse_u8(parts[0])?, parse_u8(parts[1])?);
-                let patch = parts.get(2).map(|x| -> Result<Option<u8>> {
-                    if x.eq_ignore_ascii_case("x") {
-                        Ok(None)
-                    } else {
-                        Ok(Some(parse_u8(x)?))
-                    }
-                }).transpose()?.and_then(|x| x);
+                let patch = parts
+                    .get(2)
+                    .map(|x| -> Result<Option<u8>> {
+                        if x.eq_ignore_ascii_case("x") {
+                            Ok(None)
+                        } else {
+                            Ok(Some(parse_u8(x)?))
+                        }
+                    })
+                    .transpose()?
+                    .and_then(|x| x);
                 Ok(MinecraftVersion::Release {
                     major,
                     minor,
                     patch,
                 })
             }
-            _ => Err(Error::InvalidMinecraftVersion(value.clone())),
+            _ => Err(Error::InvalidMinecraftVersion(value.into())),
         }
     }
 
     pub fn error_for_invalid(self) -> Result<Self> {
+        #[allow(clippy::match_wildcard_for_single_variants)]
         match self {
             MinecraftVersion::Unknown { version } => Err(Error::InvalidMinecraftVersion(version)),
-            x => Ok(x)
+            x => Ok(x),
         }
     }
 }
@@ -56,25 +61,20 @@ impl MinecraftVersion {
 impl std::fmt::Display for MinecraftVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            MinecraftVersion::Release { major, minor, patch } => {
-                match patch {
-                    Some(patch) => {
-                        write!(
-                            f,
-                            "{major}.{minor}.{patch}",
-                        )
-                    }
-                    None => {
-                        write!(
-                            f,
-                            "{major}.{minor}",
-                        )
-        
-                    }
+            MinecraftVersion::Release {
+                major,
+                minor,
+                patch,
+            } => match patch {
+                Some(patch) => {
+                    write!(f, "{major}.{minor}.{patch}",)
                 }
-            }
+                None => {
+                    write!(f, "{major}.{minor}",)
+                }
+            },
             MinecraftVersion::Unknown { version } => {
-                write!(f,"{version}")
+                write!(f, "{version}")
             }
         }
     }
@@ -94,13 +94,14 @@ impl From<&MinecraftVersion> for String {
 
 impl From<String> for MinecraftVersion {
     fn from(value: String) -> Self {
-        MinecraftVersion::try_parse_from(&value).unwrap_or_else(|_| MinecraftVersion::Unknown { version: value })
+        MinecraftVersion::try_parse_from(&value)
+            .unwrap_or(MinecraftVersion::Unknown { version: value })
     }
 }
 
 impl From<&str> for MinecraftVersion {
     fn from(value: &str) -> Self {
-        MinecraftVersion::try_from(value.to_string()).expect("Invalid minecraft version")
+        MinecraftVersion::from(value.to_string())
     }
 }
 

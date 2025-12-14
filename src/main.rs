@@ -51,7 +51,8 @@ fn load_config(cli: &Cli) -> Result<config::Config> {
         .clone()
         .unwrap_or_else(|| PathBuf::from("./mcmod.toml"));
     let mut mcmod = config::Config::loads(std::fs::read_to_string(config_path)?.as_str())?;
-    cli.game_version.as_ref()
+    cli.game_version
+        .as_ref()
         .inspect(|x| mcmod.defaults.game_version = (*x).clone());
     cli.loader.inspect(|x| mcmod.defaults.loader = *x);
     Ok(mcmod)
