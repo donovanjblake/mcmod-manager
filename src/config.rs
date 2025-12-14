@@ -24,12 +24,25 @@ pub struct Config {
 impl Config {
     /// Load the config from TOML text
     pub fn loads(text: &str) -> Result<Config> {
-        let result = toml::from_str::<Self>(text)?;
+        let mut result = toml::from_str::<Self>(text)?;
         assert!(
             result.paths.dot_minecraft.is_dir(),
             "{}: directory does not exist",
             result.paths.dot_minecraft.display()
         );
+        result.defaults.game_version = result.defaults.game_version.error_for_invalid()?;
+        for project in &mut result.projects {
+            if project.1.game_version.is_some() {
+                project.1.game_version =
+                    Some(project.1.game_version.take().unwrap().error_for_invalid()?);
+            }
+        }
+        for project in &mut result.optional_projects {
+            if project.1.game_version.is_some() {
+                project.1.game_version =
+                    Some(project.1.game_version.take().unwrap().error_for_invalid()?);
+            }
+        }
         Ok(result)
     }
 
@@ -179,22 +192,22 @@ mod tests {
         create_test_paths();
         let mut config = load_test_config();
         let expected_version = MinecraftVersion::from("1.21.4");
-        config.defaults.game_version = expected_version;
+        config.defaults.game_version = expected_version.clone();
         let projects = config.projects();
         let expected_projects = Vec::from([
             ConfigProject {
                 name: "blazeandcaves-advancements-pack".into(),
-                game_version: expected_version,
+                game_version: expected_version.clone(),
                 loader: ModLoader::Datapack,
             },
             ConfigProject {
                 name: "faithful-32x".into(),
-                game_version: expected_version,
+                game_version: expected_version.clone(),
                 loader: ModLoader::Minecraft,
             },
             ConfigProject {
                 name: "iris".into(),
-                game_version: expected_version,
+                game_version: expected_version.clone(),
                 loader: ModLoader::Fabric,
             },
         ]);
@@ -214,17 +227,17 @@ mod tests {
         let expected_projects = Vec::from([
             ConfigProject {
                 name: "blazeandcaves-advancements-pack".into(),
-                game_version: expected_version,
+                game_version: expected_version.clone(),
                 loader: ModLoader::Datapack,
             },
             ConfigProject {
                 name: "faithful-32x".into(),
-                game_version: expected_version,
+                game_version: expected_version.clone(),
                 loader: ModLoader::Minecraft,
             },
             ConfigProject {
                 name: "iris".into(),
-                game_version: expected_version,
+                game_version: expected_version.clone(),
                 loader: ModLoader::NeoForge,
             },
         ]);
@@ -243,17 +256,17 @@ mod tests {
         let expected_projects = Vec::from([
             ConfigProject {
                 name: "blazeandcaves-advancements-pack".into(),
-                game_version: expected_version,
+                game_version: expected_version.clone(),
                 loader: ModLoader::Datapack,
             },
             ConfigProject {
                 name: "faithful-32x".into(),
-                game_version: expected_version,
+                game_version: expected_version.clone(),
                 loader: ModLoader::Minecraft,
             },
             ConfigProject {
                 name: "iris".into(),
-                game_version: expected_version,
+                game_version: expected_version.clone(),
                 loader: ModLoader::Fabric,
             },
         ]);
@@ -272,12 +285,12 @@ mod tests {
         let expected_projects = Vec::from([
             ConfigProject {
                 name: "camps_castles_carriages".into(),
-                game_version: expected_version,
+                game_version: expected_version.clone(),
                 loader: ModLoader::Fabric,
             },
             ConfigProject {
                 name: "lithium".into(),
-                game_version: expected_version,
+                game_version: expected_version.clone(),
                 loader: ModLoader::Fabric,
             },
         ]);
