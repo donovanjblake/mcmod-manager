@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  cargo-lint:
+    name: Cargo Linting
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - name: Cargo Format
+      run: cargo fmt --check
+    - name: Cargo Clippy
+      run: cargo clippy -- -D warnings -D clippy::pedantic
+  cargo-test:
+    name: Cargo Test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - name: Cargo Test
+      run: cargo test --release
+  cargo-build:
+    name: Cargo Build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - name: Cargo Build
+      run: cargo build --release
+    - uses: actions/upload-artifact@v6
+      with:
+        path: target/release/mcmod
+    - name: Copy Release Artifacts
+      run: |
+        mv README.md target/release
+        mv examples target/release
+    - uses: softprops/action-gh-release@v2.5.0
+      with:
+        files: |
+          target/release/mcmod
+          target/release/README.md
+          target/release/examples
