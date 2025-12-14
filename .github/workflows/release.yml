@@ -37,7 +37,8 @@ jobs:
         mv examples target/release
     - uses: softprops/action-gh-release@v2.5.0
       with:
+        token: ${{ secrets.RELEASE_TOKEN }}
         files: |
           target/release/mcmod
           target/release/README.md
-          target/release/examples
+          target/release/examples/*.toml
