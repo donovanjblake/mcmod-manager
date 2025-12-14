@@ -12,7 +12,7 @@ A mod manager for Minecraft written in rust that uses the Modrinth Labrinth API.
 
 ## Quick Start
 
-- Create a mcmod.toml in the same directory as the executable. Example:
+- Create a mcmod.toml in the directory as the executable. Example:
 
   ```toml
   [defaults]
@@ -30,7 +30,7 @@ A mod manager for Minecraft written in rust that uses the Modrinth Labrinth API.
 
 `[CONFIG]`
 
-Give a path to a mod list toml file to load. If omitted, try to load from `./mcmod.toml`.
+The config file to load. Defaults to ./mcmod.toml.
 
 `-v, --game-version <GAME_VERSION>`
 
@@ -40,17 +40,21 @@ Override the default game version in the config.
 
 Override the default mod loader in the config.
 
-`-d, --download FOLDER`
+`-d, --download`
 
-Download the files to the given directory. Will not delete files already in the directory, but will
-overwrite files in the directory.
+Download the files without installing them.
 
-`--install`
+`-i, --install`
 
 Install the project files into their appropriate directories under the `.minecraft` folder. Any
 existing mods, resource packs, or data packs will be deleted.
 
-**NOTE:** This does not work with datapacks, as they have to be installed for each world.
+**NOTE:** This does not work with datapacks, as they have to be installed for each world. Datapacks
+are instead placed in `.minecraft/datapacks` to be installed manually be the user.
+
+`--offline`
+
+Developer use. Validate that all internal enumerations are up to date.
 
 `--validate`
 
@@ -92,7 +96,7 @@ default paths used by the program.
 
 `paths.data`
 
-`string`: Optional. The path to the program's data directory. _This path is currently not used._
+`string`: Optional. The path to the program's data directory, where it stores its offline cache.
 
 `paths.dot_minecraft`
 
@@ -104,7 +108,7 @@ default paths used by the program.
 
 `projects`
 
-`table`: A dictionary of the projects to download.
+`table`: A dictionary of the projects to download, keyed by the project slug.
 
 `projects.[project-name]`
 
@@ -144,7 +148,7 @@ distanthorizons.defaults=true
 
 In this example, the target version of minecraft is 1.21.5, and the preferred mod loader is Fabric.
 
-The path to the programs data _(currently not used)_ is overriden from the default application data
+The path to the programs data is overriden from the default application data
 path to `/home/alice/mcmod-data`.
 
 The projects to download are sodium, faithful-32x, and distanthorizons.
@@ -156,6 +160,6 @@ The version of Faithful to be downloaded will be the latest version that support
 and uses the normal minecraft loader, because it is a resource pack, not a mod. If this is not
 available, the program will fail.
 
-The version of Distant Horizons to be downloaded wil lbe the latest version that supports Minecraft
+The version of Distant Horizons to be downloaded will be the latest version that supports Minecraft
 1.21.5 and uses the Fabric mod loader. If this is not available, the program will skip it and
 continue.
