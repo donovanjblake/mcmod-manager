@@ -24,6 +24,8 @@ jobs:
   cargo-build:
     name: Cargo Build
     runs-on: ubuntu-latest
+    env:
+      release-dir: mcmod_manager-${{ github.event.ref }}
     steps:
     - uses: actions/checkout@v5
     - name: Cargo Build
@@ -31,14 +33,14 @@ jobs:
     - uses: actions/upload-artifact@v6
       with:
         path: target/release/mcmod
-    - name: Copy Release Artifacts
+    - name: Make Release Archive
       run: |
-        mv README.md target/release
-        mv examples target/release
+        mkdir ${{ env.release-dir }}
+        cp target/release/mcmod ${{ env.release-dir }}
+        cp README.md ${{ env.release-dir }}
+        cp examples ${{ env.release-dir }}
+        tar cvf ${{ env.release-dir }}.tar ${{ env.release-dir }}
     - uses: softprops/action-gh-release@v2.5.0
       with:
         token: ${{ secrets.RELEASE_TOKEN }}
-        files: |
-          target/release/mcmod
-          target/release/README.md
-          target/release/examples/*.toml
+        files: ${{ env.release-dir }}
