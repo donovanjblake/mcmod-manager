@@ -1,8 +1,7 @@
 use crate::config;
 use crate::error::{Error, Result};
 use crate::mcmod_client;
-use crate::moddb::ModDB;
-use crate::types::{self, ModLink, ModLoader, ProjectId, VersionId};
+use crate::types::{self, ModDB, ModLink, ModLoader, ProjectId, VersionId};
 
 const CLIENT_CACHE_JSON: &str = "db_cache.json";
 

@@ -109,8 +109,7 @@ impl Client {
         Ok(result)
     }
 
-    /// Validate all internal enumerations are up to date
-    pub fn validate_enums(&self) -> Result<Vec<crate::error::Error>> {
+    fn validate_loaders(&self) -> Result<Vec<crate::error::Error>> {
         let mut result = Vec::<crate::error::Error>::new();
         let repsonse = self.get(format!("{API_MODRINTH}/v2/tag/loader"))?;
         let values = serde_json::from_str::<Vec<LoaderInfo>>(repsonse.text()?.as_str())?;
@@ -119,6 +118,25 @@ impl Client {
                 result.push(e);
             }
         }
+        Ok(result)
+    }
+
+    fn validate_game_versions(&self) -> Result<Vec<crate::error::Error>> {
+        let mut result = Vec::<crate::error::Error>::new();
+        let repsonse = self.get(format!("{API_MODRINTH}/v2/tag/game_version"))?;
+        let values = serde_json::from_str::<Vec<GameVersionInfo>>(repsonse.text()?.as_str())?;
+        for v in values {
+            if let Err(e) = MinecraftVersion::try_from(v.version) {
+                result.push(e);
+            }
+        }
+        Ok(result)
+    }
+
+    /// Validate all internal structs are up to date
+    pub fn validate_structs(&self) -> Result<Vec<crate::error::Error>> {
+        let mut result = self.validate_loaders()?;
+        result.extend(self.validate_game_versions()?);
         Ok(result)
     }
 }
@@ -248,6 +266,11 @@ struct LoaderInfo {
     pub name: String,
 }
 
+#[derive(serde::Deserialize, Debug)]
+struct GameVersionInfo {
+    pub version: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -298,7 +321,7 @@ mod tests {
     fn test_validate_data() {
         let client = Client::default();
         client
-            .validate_enums()
+            .validate_structs()
             .expect("Client shall be able to get and compare data");
     }
 }

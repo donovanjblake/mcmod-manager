@@ -4,8 +4,7 @@ use std::path::PathBuf;
 use reqwest::blocking as rb;
 
 use crate::error::{Error, Result};
-use crate::moddb::ModDB;
-use crate::types::{self, ModProject, ModVersion, ProjectId, ProjectSlug, VersionId};
+use crate::types::{self, ModDB, ModProject, ModVersion, ProjectId, ProjectSlug, VersionId};
 
 mod labrinth;
 
@@ -113,8 +112,8 @@ impl ModClient {
     }
 
     /// Validate that all online data is supported.
-    pub fn validate_enums(&self) -> Result<Vec<crate::error::Error>> {
-        self.labrinth_client.validate_enums()
+    pub fn validate_structs(&self) -> Result<Vec<crate::error::Error>> {
+        self.labrinth_client.validate_structs()
     }
 }
 

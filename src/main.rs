@@ -3,14 +3,12 @@ use std::path::PathBuf;
 use clap::Parser;
 use error::Result;
 
-use moddb::ModDB;
-use types::{MinecraftVersion, ModLoader, ModVersion};
+use types::{MinecraftVersion, ModDB, ModLoader, ModVersion};
 
 mod cache;
 mod config;
 mod error;
 mod mcmod_client;
-mod moddb;
 mod solver;
 mod types;
 
@@ -152,7 +150,7 @@ fn main() {
     let mod_config = load_config(&cli).expect("Failure to load config");
     if cli.validate {
         let client = mcmod_client::ModClient::new();
-        let errors = client.validate_enums().expect("Failed to compare data");
+        let errors = client.validate_structs().expect("Failed to compare data");
         if !errors.is_empty() {
             println!("{errors:?}");
         }
@@ -283,9 +281,10 @@ mod tests {
 
     fn create_test_paths() {
         let path = PathBuf::from(".test/.minecraft");
-        if !path.exists() {
-            fs::create_dir_all(path).expect("Failure to create test path")
+        if path.exists() {
+            std::fs::remove_dir_all(&path).expect("Failure to remove test path");
         }
+        fs::create_dir_all(&path).expect("Failure to create test path");
     }
 
     fn check_children_count(path: &PathBuf, count: usize) {
@@ -303,6 +302,24 @@ mod tests {
         let mod_solver = solver::ModSolver::new(&mod_config);
         let mod_db = mod_solver.solve().expect("Failure to resolve versions");
         prepare_files(&mod_config, &mod_db, false);
+        prepare_files(&mod_config, &mod_db, true);
+        let minecraft = &mod_config.paths.dot_minecraft;
+        check_children_count(&minecraft.join("datapacks"), 1);
+        check_children_count(&minecraft.join("mods"), 3);
+        check_children_count(&minecraft.join("resourcepacks"), 1);
+    }
+
+    #[test]
+    fn test_action_offline_install() {
+        create_test_paths();
+        let mod_config = load_test_config();
+        let mod_solver = solver::ModSolver::new(&mod_config);
+        let mod_db = mod_solver.solve().expect("Failure to resolve versions");
+        prepare_files(&mod_config, &mod_db, false);
+
+        let mod_solver =
+            solver::ModSolverOffline::new(&mod_config).expect("Failure to load database cache");
+        let mod_db = mod_solver.solve().expect("Failure to resolve versions");
         prepare_files(&mod_config, &mod_db, true);
         let minecraft = &mod_config.paths.dot_minecraft;
         check_children_count(&minecraft.join("datapacks"), 1);
