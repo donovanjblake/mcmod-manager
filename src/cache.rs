@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::error::Result;
 use crate::mcmod_client;
-use crate::types::{VersionId, ModFile, ModLoader};
+use crate::types::{ModFile, ModLoader, VersionId};
 
 pub struct ModFileManager {
     data_dir: PathBuf,
@@ -16,7 +16,11 @@ impl ModFileManager {
             std::fs::create_dir(&data_dir)
                 .unwrap_or_else(|e| panic!("{}: Could not create {}", e, data_dir.display()));
         }
-        assert!(dot_minecraft_dir.is_dir(), "{} does not exist", dot_minecraft_dir.display());
+        assert!(
+            dot_minecraft_dir.is_dir(),
+            "{} does not exist",
+            dot_minecraft_dir.display()
+        );
         ModFileManager {
             data_dir,
             dot_minecraft_dir,

@@ -186,7 +186,7 @@ impl From<Version> for types::ModVersion {
 struct Dependency {
     pub version_id: Option<VersionId>,
     pub project_id: Option<ProjectId>,
-    #[serde(rename="dependency_type")]
+    #[serde(rename = "dependency_type")]
     pub kind: DependencyKind,
 }
 

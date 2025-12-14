@@ -25,7 +25,11 @@ impl Config {
     /// Load the config from TOML text
     pub fn loads(text: &str) -> Result<Config> {
         let result = toml::from_str::<Self>(text)?;
-        assert!(result.paths.dot_minecraft.is_dir(),"{}: directory does not exist", result.paths.dot_minecraft.display());
+        assert!(
+            result.paths.dot_minecraft.is_dir(),
+            "{}: directory does not exist",
+            result.paths.dot_minecraft.display()
+        );
         Ok(result)
     }
 

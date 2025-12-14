@@ -144,10 +144,8 @@ impl std::fmt::Display for MinecraftVersion {
                     "{}w{}{}",
                     year,
                     week,
-                    ident.map_or_else(
-                        String::new,
-                        |x| String::from_utf8(vec![x]).expect("Invalid utf-8 in snapshot")
-                    )
+                    ident.map_or_else(String::new, |x| String::from_utf8(vec![x])
+                        .expect("Invalid utf-8 in snapshot"))
                 )
             }
             MinecraftVersion::Beta {

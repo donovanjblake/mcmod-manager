@@ -123,10 +123,7 @@ impl<'a> ModSolver<'a> {
             .db
             .get_project_by_id(pid)
             .ok_or_else(|| Error::CacheMiss(project_id.into()))?;
-        if mod_project
-            .loaders
-            .contains(&self.config.defaults.loader)
-        {
+        if mod_project.loaders.contains(&self.config.defaults.loader) {
             self.collect_config_project(&config::ConfigProject {
                 name: mod_project.slug.clone(),
                 game_version: self.config.defaults.game_version,
@@ -312,10 +309,7 @@ impl<'a> ModSolverOffline<'a> {
             .db
             .get_project_by_id(pid)
             .ok_or_else(|| Error::CacheMiss(project_id.into()))?;
-        if mod_project
-            .loaders
-            .contains(&self.config.defaults.loader)
-        {
+        if mod_project.loaders.contains(&self.config.defaults.loader) {
             self.collect_config_project(&config::ConfigProject {
                 name: mod_project.slug.clone(),
                 game_version: self.config.defaults.game_version,
