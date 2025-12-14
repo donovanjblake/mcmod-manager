@@ -214,13 +214,13 @@ impl TryFrom<String> for MinecraftVersion {
         let parts: Vec<_> = value.split(&['.', '-']).collect();
         let parse_u8 = |s: &str| -> Result<u8> {
             s.parse::<u8>()
-                .map_err(|_| Error::InvalidMinecraftVersion(value.to_string()))
+                .map_err(|_| Error::InvalidMinecraftVersion(value.clone()))
         };
         match parts.len() {
             1 => {
                 let parts: Vec<_> = value.split('w').collect();
                 if parts.len() != 2 {
-                    return Err(Error::InvalidMinecraftVersion(value.to_string()));
+                    return Err(Error::InvalidMinecraftVersion(value.clone()));
                 }
                 let year = parse_u8(parts[0])?;
                 let week = parse_u8(parts[1].get(0..2).expect(""))?;
@@ -270,7 +270,7 @@ impl TryFrom<String> for MinecraftVersion {
                     suffix,
                 })
             }
-            _ => Err(Error::InvalidMinecraftVersion(value.to_string())),
+            _ => Err(Error::InvalidMinecraftVersion(value.clone())),
         }
     }
 }
