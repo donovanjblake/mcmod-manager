@@ -5,9 +5,9 @@ use error::Result;
 
 use types::{MinecraftVersion, ModDB, ModLoader, ModVersion};
 
-mod cache;
 mod config;
 mod error;
+mod manager;
 mod mcmod_client;
 mod solver;
 mod types;
@@ -35,13 +35,13 @@ struct Cli {
     #[arg(long, short)]
     install: bool,
 
-    /// Validate internal data types
-    #[arg(long)]
-    validate: bool,
-
     /// Use the offline mod file cache
     #[arg(long)]
     offline: bool,
+
+    /// Validate internal data types
+    #[arg(long)]
+    validate: bool,
 }
 
 /// Load a config, overriding values as specified in cli
@@ -99,7 +99,7 @@ fn solve_versions_offline(mod_config: &config::Config) -> Result<ModDB> {
 /// Install the files from src into `dot_minecraft`, deleting any previous files in datapacks, mods,
 /// and resourcepacks.
 fn prepare_version_files(
-    mod_manager: &cache::ModFileManager,
+    mod_manager: &manager::ModFileManager,
     mod_db: &ModDB,
     version: &ModVersion,
     install: bool,
@@ -137,7 +137,7 @@ fn prepare_version_files(
 }
 
 fn prepare_files(mod_config: &config::Config, mod_db: &ModDB, install: bool) {
-    let manager = cache::ModFileManager::new(
+    let manager = manager::ModFileManager::new(
         mod_config.paths.data.clone(),
         mod_config.paths.dot_minecraft.clone(),
     );
