@@ -19,11 +19,22 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+        - os: ubuntu-latest
+          dot_minecraft: ~/.minecraft
+        - os: macos-latest
+          dot_minecraft: ~/.minecraft
+        - os: windows-latest
+          dot_minecraft: '%APPDATA%\Roaming\.minecraft'
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v5
     - name: Cargo Test
       run: cargo test --release
+    - name: Release Test
+      run: |
+        mkdir "${{ matrix.dot_minecraft }}"
+        cargo run --release -- examples/release_test.toml
   release:
     name: Cargo Build
     runs-on: ubuntu-latest
