@@ -116,7 +116,7 @@ impl Client {
         let values = serde_json::from_str::<Vec<LoaderInfo>>(repsonse.text()?.as_str())?;
         for v in values {
             if let Err(e) = ModLoader::try_from(v.name.as_str()) {
-                result.push(e)
+                result.push(e);
             }
         }
         Ok(result)
@@ -127,6 +127,7 @@ impl Client {
 struct Project {
     pub slug: ProjectSlug,
     pub title: String,
+    #[allow(clippy::struct_field_names)]
     #[serde(rename = "id")]
     pub project_id: ProjectId,
     #[serde(rename = "versions")]
@@ -151,6 +152,7 @@ impl From<Project> for types::ModProject {
 #[derive(serde::Deserialize)]
 struct Version {
     pub name: String,
+    #[allow(clippy::struct_field_names)]
     #[serde(rename = "id")]
     pub version_id: VersionId,
     pub project_id: ProjectId,
@@ -184,12 +186,13 @@ impl From<Version> for types::ModVersion {
 struct Dependency {
     pub version_id: Option<VersionId>,
     pub project_id: Option<ProjectId>,
-    pub dependency_type: DependencyKind,
+    #[serde(rename="dependency_type")]
+    pub kind: DependencyKind,
 }
 
 impl Dependency {
     fn into_link(self) -> Option<types::ModLink> {
-        if !matches!(self.dependency_type, DependencyKind::Required) {
+        if !matches!(self.kind, DependencyKind::Required) {
             return None;
         }
         #[allow(clippy::manual_map)]

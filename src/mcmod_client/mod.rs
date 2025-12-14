@@ -23,7 +23,7 @@ pub struct ModClient {
 impl ModClient {
     /// Construct a new mod client
     pub fn new() -> Self {
-        Default::default()
+        ModClient::default()
     }
 
     /// Read the database cache at the given path
@@ -119,5 +119,5 @@ impl ModClient {
 }
 
 pub fn download_file(url: &String) -> Result<Vec<u8>> {
-    Ok(rb::get(url)?.bytes().map(|x| x.into())?)
+    Ok(rb::get(url)?.bytes().map(Into::into)?)
 }

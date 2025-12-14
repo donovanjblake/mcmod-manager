@@ -22,21 +22,21 @@ impl ModDB {
         Ok(mod_db)
     }
 
-    /// Update this ModDB by taking values from another ModDB
+    /// Update this [`ModDB`] by taking values from another [`ModDB`]
     pub fn extend(&mut self, other: ModDB) {
         self.projects.extend(other.projects);
         self.project_slugs.extend(other.project_slugs);
         self.versions.extend(other.versions);
     }
 
-    /// Insert a project into the database, and return the previous project at the same project_id.
+    /// Insert a project into the database, and return the previous project at the same `project_id`.
     pub fn add_project(&mut self, project: ModProject) -> Option<ModProject> {
         self.project_slugs
             .insert(project.slug.clone(), project.project_id);
         self.projects.insert(project.project_id, project)
     }
 
-    /// Insert a version into the database, and return the previous version at the same version_id.
+    /// Insert a version into the database, and return the previous version at the same `version_id`.
     pub fn add_version(&mut self, version: ModVersion) -> Option<ModVersion> {
         self.versions.insert(version.version_id, version)
     }
@@ -106,7 +106,7 @@ impl ModDB {
                 continue;
             }
             if latest.is_none_or(|x| x.1 < version.date_published) {
-                latest = Some((version.version_id, version.date_published))
+                latest = Some((version.version_id, version.date_published));
             }
         }
         let latest_id = latest

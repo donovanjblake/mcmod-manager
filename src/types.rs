@@ -145,7 +145,7 @@ impl std::fmt::Display for MinecraftVersion {
                     year,
                     week,
                     ident.map_or_else(
-                        || String::from(""),
+                        String::new,
                         |x| String::from_utf8(vec![x]).expect("Invalid utf-8 in snapshot")
                     )
                 )
@@ -179,7 +179,7 @@ impl std::fmt::Display for MinecraftReleaseSuffix {
 
 impl From<MinecraftReleaseSuffix> for String {
     fn from(value: MinecraftReleaseSuffix) -> Self {
-        format!("{}", value)
+        format!("{value}")
     }
 }
 
@@ -206,7 +206,7 @@ impl TryFrom<String> for MinecraftReleaseSuffix {
 
 impl From<MinecraftVersion> for String {
     fn from(value: MinecraftVersion) -> Self {
-        format!("{}", value)
+        format!("{value}")
     }
 }
 
@@ -220,7 +220,7 @@ impl TryFrom<String> for MinecraftVersion {
         };
         match parts.len() {
             1 => {
-                let parts: Vec<_> = value.split("w").collect();
+                let parts: Vec<_> = value.split('w').collect();
                 if parts.len() != 2 {
                     return Err(Error::InvalidMinecraftVersion(value.to_string()));
                 }
@@ -250,7 +250,7 @@ impl TryFrom<String> for MinecraftVersion {
                     (None, None) => (None, MinecraftReleaseSuffix::None),
                     (Some(x), None) => {
                         if value.contains('-') {
-                            (None, MinecraftReleaseSuffix::try_from(x.to_string())?)
+                            (None, MinecraftReleaseSuffix::try_from((*x).to_string())?)
                         } else if x.eq_ignore_ascii_case("x") {
                             (None, MinecraftReleaseSuffix::None)
                         } else {
@@ -259,7 +259,7 @@ impl TryFrom<String> for MinecraftVersion {
                     }
                     (Some(x), Some(y)) => (
                         Some(parse_u8(x)?),
-                        MinecraftReleaseSuffix::try_from(y.to_string())?,
+                        MinecraftReleaseSuffix::try_from((*y).to_string())?,
                     ),
                     (None, Some(_)) => {
                         unreachable!("Can't have [3] without [2]")
@@ -335,7 +335,7 @@ fn base64_encode_id(value: u64) -> String {
 pub struct ProjectId(u64);
 
 impl ProjectId {
-    pub fn inner(&self) -> u64 {
+    pub fn inner(self) -> u64 {
         self.0
     }
 }
@@ -402,7 +402,7 @@ impl std::fmt::Display for ProjectSlug {
 pub struct VersionId(u64);
 
 impl VersionId {
-    pub fn inner(&self) -> u64 {
+    pub fn inner(self) -> u64 {
         self.0
     }
 }

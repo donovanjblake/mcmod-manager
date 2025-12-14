@@ -4,7 +4,7 @@ use clap::Parser;
 use error::Result;
 
 use moddb::ModDB;
-use types::*;
+use types::{MinecraftVersion, ModLoader, ModVersion};
 
 mod cache;
 mod config;
@@ -16,6 +16,7 @@ mod types;
 
 /// The options passed to the program through the command line interface
 #[derive(Parser, Debug)]
+#[allow(clippy::struct_excessive_bools)]
 struct Cli {
     /// The config file to load. Defaults to ./mcmod.toml
     config: Option<PathBuf>,
@@ -49,7 +50,7 @@ struct Cli {
 fn load_config(cli: &Cli) -> Result<config::Config> {
     let config_path = cli
         .config
-        .to_owned()
+        .clone()
         .unwrap_or_else(|| PathBuf::from("./mcmod.toml"));
     let mut mcmod = config::Config::loads(std::fs::read_to_string(config_path)?.as_str())?;
     cli.game_version
@@ -96,18 +97,17 @@ fn solve_versions_offline(mod_config: &config::Config) -> Result<ModDB> {
     mod_solver.solve()
 }
 
-/// Install the files from src into dot_minecraft, deleting any previous files in datapacks, mods,
+/// Install the files from src into `dot_minecraft`, deleting any previous files in datapacks, mods,
 /// and resourcepacks.
 fn prepare_version_files(
     mod_manager: &cache::ModFileManager,
     mod_db: &ModDB,
     version: &ModVersion,
     install: bool,
-) -> Result<()> {
+) {
     let printed_name = mod_db
         .get_project_by_id(version.project_id)
-        .map(|x| x.name.as_str())
-        .unwrap_or(version.name.as_str());
+        .map_or_else(|| version.name.as_str(), |x| x.name.as_str());
     println!(
         "Getting files for {} : {}",
         version.version_id, printed_name
@@ -122,7 +122,7 @@ fn prepare_version_files(
             println!("  Downloading file {}", mod_file.name);
             mod_manager
                 .download_file(version.version_id, mod_file)
-                .expect("Failure to get file");
+                .expect("Failure to download file");
         }
         if install {
             println!("  Installing");
@@ -135,18 +135,16 @@ fn prepare_version_files(
                 .expect("Failure to get file");
         }
     }
-    Ok(())
 }
 
-fn prepare_files(mod_config: &config::Config, mod_db: &ModDB, install: bool) -> Result<()> {
+fn prepare_files(mod_config: &config::Config, mod_db: &ModDB, install: bool) {
     let manager = cache::ModFileManager::new(
         mod_config.paths.data.clone(),
         mod_config.paths.dot_minecraft.clone(),
     );
     for version in mod_db.get_versions() {
-        prepare_version_files(&manager, mod_db, version, install)?;
+        prepare_version_files(&manager, mod_db, version, install);
     }
-    Ok(())
 }
 
 fn main() {
@@ -156,17 +154,17 @@ fn main() {
         let client = mcmod_client::ModClient::new();
         let errors = client.validate_enums().expect("Failed to compare data");
         if !errors.is_empty() {
-            println!("{errors:?}")
+            println!("{errors:?}");
         }
     }
 
-    let mod_db = if !cli.offline {
-        solve_versions(&mod_config).expect("Failure to resolve projects")
-    } else {
+    let mod_db = if cli.offline {
         solve_versions_offline(&mod_config).expect("Failure to resolve projects")
+    } else {
+        solve_versions(&mod_config).expect("Failure to resolve projects")
     };
     if cli.download || cli.install {
-        prepare_files(&mod_config, &mod_db, cli.install).expect("Failure to prepare files");
+        prepare_files(&mod_config, &mod_db, cli.install);
     }
 }
 
@@ -304,8 +302,8 @@ mod tests {
         let mod_config = load_test_config();
         let mod_solver = solver::ModSolver::new(&mod_config);
         let mod_db = mod_solver.solve().expect("Failure to resolve versions");
-        prepare_files(&mod_config, &mod_db, false).expect("Failure to download files");
-        prepare_files(&mod_config, &mod_db, true).expect("Failure to install files");
+        prepare_files(&mod_config, &mod_db, false);
+        prepare_files(&mod_config, &mod_db, true);
         let minecraft = &mod_config.paths.dot_minecraft;
         check_children_count(&minecraft.join("datapacks"), 1);
         check_children_count(&minecraft.join("mods"), 3);

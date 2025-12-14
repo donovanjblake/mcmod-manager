@@ -25,9 +25,7 @@ impl Config {
     /// Load the config from TOML text
     pub fn loads(text: &str) -> Result<Config> {
         let result = toml::from_str::<Self>(text)?;
-        if !result.paths.dot_minecraft.is_dir() {
-            panic!("{:?}: directory does not exist", result.paths.dot_minecraft);
-        }
+        assert!(result.paths.dot_minecraft.is_dir(),"{}: directory does not exist", result.paths.dot_minecraft.display());
         Ok(result)
     }
 
@@ -35,7 +33,7 @@ impl Config {
     pub fn projects(&self) -> Vec<ConfigProject> {
         let mut result = Vec::<ConfigProject>::new();
         for (name, project) in &self.projects {
-            result.push(project.resolve(name, &self.defaults))
+            result.push(project.resolve(name, &self.defaults));
         }
         result.sort_by(|l, r| l.name.as_str().cmp(r.name.as_str()));
         result
@@ -45,7 +43,7 @@ impl Config {
     pub fn optional_projects(&self) -> Vec<ConfigProject> {
         let mut result = Vec::<ConfigProject>::new();
         for (name, project) in &self.optional_projects {
-            result.push(project.resolve(name, &self.defaults))
+            result.push(project.resolve(name, &self.defaults));
         }
         result.sort_by(|l, r| l.name.as_str().cmp(r.name.as_str()));
         result
@@ -127,7 +125,7 @@ impl Default for ConfigPaths {
     }
 }
 
-/// Internal project information. Use [OptionConfigProject::resolve] to replace `None` at runtime.
+/// Internal project information. Use [`OptionConfigProject::resolve`] to replace `None` at runtime.
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 struct OptionConfigProject {
     /// Target Minecraft version
