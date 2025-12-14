@@ -28,6 +28,20 @@ jobs:
       release-dir: mcmod_manager-${{ github.ref_name }}
     steps:
     - uses: actions/checkout@v5
+    - name: Check Version
+      run: |
+        cargo_version=$(awk -F '"' '/^version = / {print "v"$2}' Cargo.toml)
+        echo "Version in cargo.toml: $cargo_version"
+        tag_version='${{ github.ref_name }}'
+        echo "Version in tag: $tag_version"
+        if [[ -z "$cargo_version" ]]; then
+          echo "Version not found."
+          exit 1
+        elif [[ "$cargo_version" != "$tag_version" ]]; then
+          echo "Versions do not match."
+          exit 1
+        fi
+        echo "Versions match!"
     - name: Cargo Build
       run: cargo build --release
     - uses: actions/upload-artifact@v6
