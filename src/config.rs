@@ -183,7 +183,7 @@ mod tests {
     fn create_test_paths() {
         let path = PathBuf::from(".test/.minecraft");
         if !path.exists() {
-            std::fs::create_dir_all(path).expect("Failure to create test path")
+            std::fs::create_dir_all(path).expect("Failure to create test path");
         }
     }
 
