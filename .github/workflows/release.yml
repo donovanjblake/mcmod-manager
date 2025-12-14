@@ -16,16 +16,30 @@ jobs:
       run: cargo clippy -- -D warnings -D clippy::pedantic
   cargo-test:
     name: Cargo Test
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v5
     - name: Cargo Test
       run: cargo test --release
-  cargo-build:
+  release:
     name: Cargo Build
     runs-on: ubuntu-latest
+    needs: [cargo-lint, cargo-test]
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+        - os: ubunutu-latest
+          name: linux
+        - os: macos-latest
+          name: macos
+        - os: windows-latest
+          name: windows
     env:
-      release-dir: mcmod_manager-${{ github.ref_name }}
+      release-dir: mcmod_manager-${{ matrix.name }}-${{ github.ref_name }}
     steps:
     - uses: actions/checkout@v5
     - name: Check Version
@@ -47,14 +61,25 @@ jobs:
     - uses: actions/upload-artifact@v6
       with:
         path: target/release/mcmod
-    - name: Make Release Archive
+    - name: Make Tar Archive
+      if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'}}
       run: |
         mkdir ${{ env.release-dir }}
         cp target/release/mcmod ${{ env.release-dir }}
         cp README.md ${{ env.release-dir }}
         cp -r examples ${{ env.release-dir }}/examples
         tar cvf ${{ env.release-dir }}.tar ${{ env.release-dir }}
+    - name: Make Zip Archive
+      if: ${{ matrix.os == 'windows-latest' }}
+      run: |
+        mkdir ${{ env.release-dir }}
+        cp target/release/mcmod ${{ env.release-dir }}
+        cp README.md ${{ env.release-dir }}
+        cp -r examples ${{ env.release-dir }}/examples
+        zip -r ${{ env.release-dir }}.zip ${{ env.release-dir }}
     - uses: softprops/action-gh-release@v2.5.0
       with:
         token: ${{ secrets.RELEASE_TOKEN }}
-        files: ${{ env.release-dir }}.tar
+        files: |
+          ${{ env.release-dir }}.tar
+          ${{ env.release-dir }}.zip

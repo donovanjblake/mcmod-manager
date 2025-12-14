@@ -187,8 +187,8 @@ mod tests {
         assert_eq!(cli.config, None, "Cli shall set falsy defaults");
         assert_eq!(cli.game_version, None, "Cli shall set falsy defaults");
         assert_eq!(cli.loader, None, "Cli shall set falsy defaults");
-        assert_eq!(cli.download, false, "Cli shall set falsy defaults");
-        assert_eq!(cli.install, false, "Cli shall set falsy defaults");
+        assert!(!cli.download, "Cli shall set falsy defaults");
+        assert!(!cli.install, "Cli shall set falsy defaults");
     }
 
     #[test]
@@ -219,8 +219,8 @@ mod tests {
             Some(ModLoader::Minecraft),
             "Cli shall read the input mod loader"
         );
-        assert_eq!(cli.download, true, "Cli shall set the download flag");
-        assert_eq!(cli.install, true, "Cli shall set the install flag");
+        assert!(cli.download, "Cli shall set the download flag");
+        assert!(cli.install, "Cli shall set the install flag");
     }
 
     #[test]
@@ -251,8 +251,8 @@ mod tests {
             Some(ModLoader::Minecraft),
             "Cli shall read the input mod loader"
         );
-        assert_eq!(cli.download, true, "Cli shall set the install flag");
-        assert_eq!(cli.install, true, "Cli shall set the install flag");
+        assert!(cli.download, "Cli shall set the install flag");
+        assert!(cli.install, "Cli shall set the install flag");
     }
 
     #[test]

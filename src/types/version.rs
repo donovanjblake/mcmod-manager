@@ -111,7 +111,7 @@ mod tests {
 
     #[test]
     fn test_version_full() {
-        let parsed = MinecraftVersion::try_from("1.23.4")
+        let parsed = MinecraftVersion::try_parse_from("1.23.4")
             .expect("MinecraftVersion shall be able to parse a version string");
         assert_eq!(
             parsed,
@@ -125,7 +125,7 @@ mod tests {
 
     #[test]
     fn test_version_patch_x() {
-        let parsed = MinecraftVersion::try_from("1.23.x").expect("MinecraftVersion shall be able to parse a version string where the patch version is 'x'");
+        let parsed = MinecraftVersion::try_parse_from("1.23.x").expect("MinecraftVersion shall be able to parse a version string where the patch version is 'x'");
         assert_eq!(
             parsed,
             MinecraftVersion::Release {
@@ -138,7 +138,7 @@ mod tests {
 
     #[test]
     fn test_version_patch_none() {
-        let parsed = MinecraftVersion::try_from("1.23").expect("MinecraftVersion shall be able to parse a version string where the patch version is not given");
+        let parsed = MinecraftVersion::try_parse_from("1.23").expect("MinecraftVersion shall be able to parse a version string where the patch version is not given");
         assert_eq!(
             parsed,
             MinecraftVersion::Release {

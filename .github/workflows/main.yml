@@ -14,10 +14,13 @@ jobs:
     - name: Cargo Format
       run: cargo fmt --check
     - name: Cargo Clippy
-      run: cargo clippy -- -D warnings -D clippy::pedantic
+      run: cargo clippy --tests -- -D warnings -D clippy::pedantic
   cargo-build:
     name: Cargo Build
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v5
     - name: Cargo Build
