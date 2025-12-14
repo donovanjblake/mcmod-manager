@@ -38,9 +38,9 @@ jobs:
         mkdir ${{ env.release-dir }}
         cp target/release/mcmod ${{ env.release-dir }}
         cp README.md ${{ env.release-dir }}
-        cp examples ${{ env.release-dir }}
+        cp -r examples ${{ env.release-dir }}/examples
         tar cvf ${{ env.release-dir }}.tar ${{ env.release-dir }}
     - uses: softprops/action-gh-release@v2.5.0
       with:
         token: ${{ secrets.RELEASE_TOKEN }}
-        files: ${{ env.release-dir }}
+        files: ${{ env.release-dir }}.tar
