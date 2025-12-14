@@ -28,5 +28,6 @@ jobs:
     - uses: actions/upload-artifact@v6
       with:
         path: target/debug/mcmod
+        name: mcmod-${{ matrix.os }}
     - name: Cargo Test
       run: cargo test
