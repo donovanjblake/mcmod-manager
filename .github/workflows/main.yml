@@ -26,7 +26,7 @@ jobs:
         - os: macos-latest
           dot_minecraft: ~/.minecraft
         - os: windows-latest
-          dot_minecraft: '%APPDATA%\Roaming\.minecraft'
+          dot_minecraft: '$env:APPDATA\Roaming\.minecraft'
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v5
