@@ -17,6 +17,7 @@ jobs:
   cargo-test:
     name: Cargo Test
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         include:
@@ -25,7 +26,7 @@ jobs:
         - os: macos-latest
           dot_minecraft: ~/.minecraft
         - os: windows-latest
-          dot_minecraft: '%APPDATA%\Roaming\.minecraft'
+          dot_minecraft: '$env:APPDATA\Roaming\.minecraft'
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v5
