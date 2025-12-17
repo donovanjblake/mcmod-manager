@@ -36,7 +36,7 @@ jobs:
     name: Cargo Build
     runs-on: ${{ inputs.runs-on }}
     env:
-      release-dir: mcmod_manager-${{ inputs.name }}-${{ github.ref_name }}
+      release-dir: mcmod_manager-${{ inputs.name }}-${{ inputs.release && github.ref_name || github.run_id }}
     steps:
     - uses: actions/checkout@v5
     - name: Cargo Test
