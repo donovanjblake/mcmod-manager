@@ -38,4 +38,4 @@ jobs:
     - uses: softprops/action-gh-release@v2.5.0
       with:
         token: ${{ secrets.RELEASE_TOKEN }}
-        files: '*'
+        files: mcmod_manager-*
