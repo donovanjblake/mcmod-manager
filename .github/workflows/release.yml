@@ -29,3 +29,13 @@ jobs:
     uses: ./.github/workflows/target.yml
     with:
       release: true
+  upload-release:
+    name: Upload Release
+    needs: [target]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/download-artifact@v7
+    - uses: softprops/action-gh-release@v2.5.0
+      with:
+        token: ${{ secrets.RELEASE_TOKEN }}
+        files: '*'

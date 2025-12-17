@@ -13,7 +13,7 @@ env:
 
 jobs:
   cargo-lint:
-    name: Cargo Linting
+    name: Cargo Lint
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v5
@@ -72,14 +72,3 @@ jobs:
         path: |
           ${{ env.release-dir }}.tar.gz
           ${{ env.release-dir }}.zip
-  release:
-    needs: [cargo-lint, cargo-build]
-    name: Upload Release
-    if: ${{ inputs.release }}
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/download-artifact@v7
-    - uses: softprops/action-gh-release@v2.5.0
-      with:
-        token: ${{ secrets.RELEASE_TOKEN }}
-        files: '*'
