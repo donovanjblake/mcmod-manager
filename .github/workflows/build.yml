@@ -55,7 +55,7 @@ jobs:
       run: tar czvf ${{ env.release-dir }}.tar.gz ${{ env.release-dir }}
     - name: Make Zip Archive
       if: ${{ inputs.archive == 'zip' }}
-      run: zip -r ${{ env.release-dir }}.zip ${{ env.release-dir }}
+      run: 7z a ${{ env.release-dir }}.zip ${{ env.release-dir }}
     - name: Setup .minecraft
       run: mkdir ${{ inputs.dot_minecraft }}
     - name: Run Integration Test
