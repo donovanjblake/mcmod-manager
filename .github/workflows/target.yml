@@ -44,12 +44,10 @@ jobs:
       release-dir: mcmod_manager-${{ matrix.name }}-${{ github.ref_name }}
     steps:
     - uses: actions/checkout@v5
-    - name: Cargo Build
-      run: cargo build
     - name: Cargo Test
       run: cargo test
     - name: Cargo Build
-      run: cargo build ${{ inputs.release && '--release' }}
+      run: cargo build ${{ inputs.release == 'true' && '--release' }}
     - name: Prepare Archive
       run: |
         mkdir ${{ env.release-dir }}
