@@ -46,8 +46,12 @@ jobs:
     - uses: actions/checkout@v5
     - name: Cargo Test
       run: cargo test
-    - name: Cargo Build
-      run: cargo build ${{ inputs.release == 'true' && '--release' }}
+    - name: Cargo Build (Dev)
+      if: ${{ !inputs.release }}
+      run: cargo build
+    - name: Cargo Build (Release)
+      if: ${{ inputs.release }}
+      run: cargo build --release
     - name: Prepare Archive
       run: |
         mkdir ${{ env.release-dir }}
