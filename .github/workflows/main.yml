@@ -10,4 +10,4 @@ env:
 
 jobs:
   target:
-    uses: .github/workflows/target.yml
+    uses: ./.github/workflows/target.yml

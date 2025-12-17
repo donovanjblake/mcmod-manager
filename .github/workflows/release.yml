@@ -26,6 +26,6 @@ jobs:
         echo "Versions match!"
   target:
     needs: [check-version]
-    uses: .github/workflows/target.yml
+    uses: ./.github/workflows/target.yml
     with:
       release: true
