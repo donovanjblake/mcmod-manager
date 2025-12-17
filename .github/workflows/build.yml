@@ -47,8 +47,8 @@ jobs:
       env:
         target-dir: ${{ inputs.release && 'release' || 'debug' }}
       run: |
-        echo ${{ inputs.build-name }}
         mkdir ${{ env.release-dir }}
+        ls target/${{ env.target-dir }}
         cp target/${{ env.target-dir }}/${{ inputs.exe }} ${{ env.release-dir }}
         cp README.md ${{ env.release-dir }}
         cp -r examples ${{ env.release-dir }}/examples
@@ -61,7 +61,7 @@ jobs:
     - name: Setup .minecraft
       run: mkdir ${{ inputs.dot_minecraft }}
     - name: Run Integration Test
-      run: mcmod examples/integration_test.toml
+      run: ${{ inputs.exe }} examples/integration_test.toml
     - uses: actions/upload-artifact@v6
       with:
         if-no-files-found: error
