@@ -54,7 +54,8 @@ impl ModFileManager {
         std::fs::create_dir_all(
             path.parent()
                 .unwrap_or_else(|| panic!("{:?} does not have parent", path.display())),
-        ).map_err(|_| Error::CreatePath(path.clone()))?;
+        )
+        .map_err(|_| Error::CreatePath(path.clone()))?;
         std::fs::write(&path, buffer).map_err(|_| Error::WritePath(path.clone()))?;
         Ok(path)
     }
@@ -89,7 +90,8 @@ impl ModFileManager {
         std::fs::create_dir_all(
             dst.parent()
                 .unwrap_or_else(|| panic!("{:?} does not have parent", dst.display())),
-        ).map_err(|_| Error::CreatePath(dst.clone()))?;
+        )
+        .map_err(|_| Error::CreatePath(dst.clone()))?;
         std::fs::copy(&src, &dst).map_err(|_| Error::ReadPath(src.clone()))?;
         Ok(())
     }

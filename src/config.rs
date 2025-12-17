@@ -69,8 +69,10 @@ impl Config {
 
     /// Create the paths used by the tool
     pub fn create_paths(&self) -> Result<()> {
-        std::fs::create_dir_all(&self.paths.data).map_err(|_| Error::CreatePath(self.paths.data.clone()))?;
-        std::fs::create_dir_all(&self.paths.temp).map_err(|_| Error::CreatePath(self.paths.temp.clone()))?;
+        std::fs::create_dir_all(&self.paths.data)
+            .map_err(|_| Error::CreatePath(self.paths.data.clone()))?;
+        std::fs::create_dir_all(&self.paths.temp)
+            .map_err(|_| Error::CreatePath(self.paths.temp.clone()))?;
         Ok(())
     }
 }

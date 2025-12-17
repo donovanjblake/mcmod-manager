@@ -60,9 +60,17 @@ jobs:
       run: mkdir ${{ inputs.dot_minecraft }}
     - name: Run Integration Test
       run: ${{ env.exe }} examples/integration_test.toml -i
-    - uses: actions/upload-artifact@v6
+    - name: Upload Artifact (tar)
+      if: ${{ inputs.archive == 'tar' }}
+      uses: actions/upload-artifact@v6
       with:
         if-no-files-found: error
-        path: |
-          ${{ env.release-dir }}.tar.gz
-          ${{ env.release-dir }}.zip
+        name: ${{ env.release-dir }}
+        path: ${{ env.release-dir }}.tar.gz
+    - name: Upload Artifact (zip)
+      if: ${{ inputs.archive == 'zip' }}
+      uses: actions/upload-artifact@v6
+      with:
+        if-no-files-found: error
+        name: ${{ env.release-dir }}
+        path: ${{ env.release-dir }}.zip

@@ -50,7 +50,8 @@ fn load_config(cli: &Cli) -> Result<config::Config> {
         .config
         .clone()
         .unwrap_or_else(|| PathBuf::from("./mcmod.toml"));
-    let text = std::fs::read_to_string(&config_path).map_err(|_| Error::ReadPath(config_path.clone()))?;
+    let text =
+        std::fs::read_to_string(&config_path).map_err(|_| Error::ReadPath(config_path.clone()))?;
     let mut mcmod = config::Config::loads(text.as_str())?;
     cli.game_version
         .as_ref()
