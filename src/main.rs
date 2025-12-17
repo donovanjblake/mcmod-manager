@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use error::Result;
+use error::{Error, Result};
 
 use types::{MinecraftVersion, ModDB, ModLoader, ModVersion};
 
@@ -50,7 +50,8 @@ fn load_config(cli: &Cli) -> Result<config::Config> {
         .config
         .clone()
         .unwrap_or_else(|| PathBuf::from("./mcmod.toml"));
-    let mut mcmod = config::Config::loads(std::fs::read_to_string(config_path)?.as_str())?;
+    let text = std::fs::read_to_string(&config_path).map_err(|_| Error::ReadPath(config_path.clone()))?;
+    let mut mcmod = config::Config::loads(text.as_str())?;
     cli.game_version
         .as_ref()
         .inspect(|x| mcmod.defaults.game_version = (*x).clone());

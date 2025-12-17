@@ -33,7 +33,7 @@ impl<'a> ModSolver<'a> {
         self.collect_optional_projects();
         let path = &self.config.paths.data;
         if !path.is_dir() {
-            std::fs::create_dir(path)?;
+            std::fs::create_dir(path).map_err(|_| Error::CreatePath(path.clone()))?;
         }
         self.client
             .write_cache(&path.join(CLIENT_CACHE_JSON))

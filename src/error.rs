@@ -6,9 +6,6 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("io error: {0}")]
-    IO(#[from] std::io::Error),
-
     #[error("toml error: {0}")]
     TomlParse(#[from] toml::de::Error),
 
@@ -50,6 +47,15 @@ pub enum Error {
 
     #[error("Path does not exist: {0:?}")]
     MissingPath(PathBuf),
+
+    #[error("Failure to create path: {0:?}")]
+    CreatePath(PathBuf),
+
+    #[error("Failure to read path: {0:?}")]
+    ReadPath(PathBuf),
+
+    #[error("Failure to write path: {0:?}")]
+    WritePath(PathBuf),
 }
 
 impl Error {
