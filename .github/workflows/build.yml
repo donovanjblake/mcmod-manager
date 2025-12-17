@@ -11,7 +11,7 @@ on:
         description: The system to run on. ex. 'ubuntu-latest'
         type: string
         required: true
-      name:
+      build-name:
         description: The subname of the artifact. ex. 'ubuntu'
         type: string
         required: true
@@ -36,7 +36,7 @@ jobs:
     name: Cargo Build
     runs-on: ${{ inputs.runs-on }}
     env:
-      release-dir: mcmod_manager-${{ inputs.name }}-${{ inputs.release && github.ref_name || github.run_id }}
+      release-dir: mcmod_manager-${{ inputs.build-name }}-${{ inputs.release && github.ref_name || github.run_id }}
     steps:
     - uses: actions/checkout@v5
     - name: Cargo Test
@@ -47,7 +47,7 @@ jobs:
       env:
         target-dir: ${{ inputs.release && 'release' || 'debug' }}
       run: |
-        echo ${{ inputs.name }}
+        echo ${{ inputs.build-name }}
         mkdir ${{ env.release-dir }}
         cp target/${{ env.target-dir }}/${{ inputs.exe }} ${{ env.release-dir }}
         cp README.md ${{ env.release-dir }}
@@ -66,5 +66,5 @@ jobs:
       with:
         if-no-files-found: error
         path: |
-          mcmod_manager-${{ inputs.name }}-${{ github.ref_name }}.tar.gz
-          mcmod_manager-${{ inputs.name }}-${{ github.ref_name }}.zip
+          ${{ env.release-dir }}.tar.gz
+          ${{ env.release-dir }}.zip
