@@ -3,7 +3,6 @@ name: Release
 on:
   push:
     tags: ['v*']
-  pull_request:
 
 jobs:
   check-version:
@@ -41,4 +40,4 @@ jobs:
     - uses: softprops/action-gh-release@v2.5.0
       with:
         token: ${{ secrets.RELEASE_TOKEN }}
-        files: mcmod_manager-*
+        files: '*/*'

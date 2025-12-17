@@ -65,12 +65,12 @@ jobs:
       uses: actions/upload-artifact@v6
       with:
         if-no-files-found: error
-        name: ${{ env.release-dir }}
+        name: ${{ env.release-dir }}.tar.gz
         path: ${{ env.release-dir }}.tar.gz
     - name: Upload Artifact (zip)
       if: ${{ inputs.archive == 'zip' }}
       uses: actions/upload-artifact@v6
       with:
         if-no-files-found: error
-        name: ${{ env.release-dir }}
+        name: ${{ env.release-dir }}.zip
         path: ${{ env.release-dir }}.zip
