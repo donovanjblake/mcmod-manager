@@ -173,7 +173,7 @@ mod tests {
 
     fn load_test_config() -> Config {
         Config::loads(
-            std::fs::read_to_string("examples/integration_test.toml")
+            std::fs::read_to_string("examples/workspace_test.toml")
                 .expect("Failure to read test config")
                 .as_str(),
         )
