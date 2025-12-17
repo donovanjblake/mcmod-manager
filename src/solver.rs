@@ -204,9 +204,7 @@ impl<'a> ModSolverOffline<'a> {
     pub fn new(mod_config: &'a config::Config) -> Result<Self> {
         let client_cache = mod_config.paths.data.join(CLIENT_CACHE_JSON);
         let mut mod_client = mcmod_client::ModClient::new();
-        if client_cache.is_file() {
-            mod_client.read_cache(&client_cache)?;
-        }
+        mod_client.read_cache(&client_cache)?;
         Ok(ModSolverOffline {
             db: ModDB::default(),
             client: mod_client,

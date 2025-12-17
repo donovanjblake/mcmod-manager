@@ -289,11 +289,10 @@ mod tests {
     }
 
     fn create_test_paths() {
+        // Cannot remove test paths. todo: use a virtual file system so file tests can run properly
         let path = PathBuf::from(".test/.minecraft");
-        if path.exists() {
-            std::fs::remove_dir_all(&path).expect("Failure to remove test path");
-        }
-        fs::create_dir_all(&path).expect("Failure to create test path");
+        fs::create_dir_all(&path)
+            .unwrap_or_else(|_| panic!("Test path {} should be creatable.", path.display()));
     }
 
     fn check_children_count(path: &PathBuf, count: usize) {
@@ -310,7 +309,6 @@ mod tests {
         let mod_config = load_test_config();
         let mod_solver = solver::ModSolver::new(&mod_config);
         let mod_db = mod_solver.solve().expect("Failure to resolve versions");
-        prepare_files(&mod_config, &mod_db, false);
         prepare_files(&mod_config, &mod_db, true);
         let minecraft = &mod_config.paths.dot_minecraft;
         check_children_count(&minecraft.join("datapacks"), 1);

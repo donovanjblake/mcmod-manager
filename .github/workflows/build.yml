@@ -59,7 +59,7 @@ jobs:
     - name: Setup .minecraft
       run: mkdir ${{ inputs.dot_minecraft }}
     - name: Run Integration Test
-      run: ${{ env.exe }} examples/integration_test.toml
+      run: ${{ env.exe }} examples/integration_test.toml -i
     - uses: actions/upload-artifact@v6
       with:
         if-no-files-found: error

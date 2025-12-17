@@ -36,6 +36,12 @@ impl ModClient {
     /// Dump a database cache to the given path
     pub fn write_cache(&self, cache_json: &PathBuf) -> Result<()> {
         let text = serde_json::to_string(&self.mod_db)?;
+        let parent = cache_json
+            .parent()
+            .ok_or_else(|| Error::MissingPath(cache_json.clone()))?;
+        if !parent.is_dir() {
+            std::fs::create_dir_all(parent)?;
+        }
         std::fs::write(cache_json, text)?;
         Ok(())
     }

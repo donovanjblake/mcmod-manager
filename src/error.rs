@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::types::{MinecraftVersion, ModLoader, ProjectSlug};
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -45,6 +47,9 @@ pub enum Error {
         game_version: MinecraftVersion,
         mod_loader: ModLoader,
     },
+
+    #[error("Path does not exist: {0:?}")]
+    MissingPath(PathBuf),
 }
 
 impl Error {
