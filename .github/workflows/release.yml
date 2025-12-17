@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     tags: ['v*']
+  pull_request:
 
 jobs:
   check-version:
@@ -35,6 +36,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/download-artifact@v7
+    - name: ls
+      run: ls
     - uses: softprops/action-gh-release@v2.5.0
       with:
         token: ${{ secrets.RELEASE_TOKEN }}
