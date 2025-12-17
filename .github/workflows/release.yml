@@ -5,31 +5,9 @@ on:
     tags: ['v*']
 
 jobs:
-  cargo-lint:
-    name: Cargo Linting
+  check-version:
+    name: Check Version
     runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v5
-    - name: Cargo Format
-      run: cargo fmt --check
-    - name: Cargo Clippy
-      run: cargo clippy -- -D warnings -D clippy::pedantic
-  cargo-build:
-    name: Cargo Build
-    needs: [cargo-lint]
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        include:
-        - os: ubunutu-latest
-          name: linux
-        - os: macos-latest
-          name: macos
-        - os: windows-latest
-          name: windows
-    runs-on: ${{ matrix.os }}
-    env:
-      release-dir: mcmod_manager-${{ matrix.name }}-${{ github.ref_name }}
     steps:
     - uses: actions/checkout@v5
     - name: Check Version
@@ -46,57 +24,8 @@ jobs:
           exit 1
         fi
         echo "Versions match!"
-    - name: Cargo Build
-      run: cargo build --release
-    - name: Make Tar Archive
-      if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'}}
-      run: |
-        mkdir ${{ env.release-dir }}
-        cp target/release/mcmod ${{ env.release-dir }}
-        cp README.md ${{ env.release-dir }}
-        cp -r examples ${{ env.release-dir }}/examples
-        tar czvf ${{ env.release-dir }}.tar.gz ${{ env.release-dir }}
-    - name: Make Zip Archive
-      if: ${{ matrix.os == 'windows-latest' }}
-      run: |
-        mkdir ${{ env.release-dir }}
-        cp target/release/mcmod.exe ${{ env.release-dir }}
-        cp README.md ${{ env.release-dir }}
-        cp -r examples ${{ env.release-dir }}/examples
-        zip -r ${{ env.release-dir }}.zip ${{ env.release-dir }}
-    - uses: actions/upload-artifact@v6
-      with:
-        if-no-files-found: error
-        path: |
-          ${{ env.release-dir }}.tar.gz
-          ${{ env.release-dir }}.zip
-  integration-test:
-    name: Run Integration Test
-    needs: [cargo-lint, cargo-test]
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        include:
-        - os: ubunutu-latest
-          name: linux
-          dot_minecraft: '$HOME/.minecraft'
-        - os: macos-latest
-          name: macos
-          dot_minecraft: '$HOME/.minecraft'
-        - os: windows-latest
-          name: windows
-          dot_minecraft: '$env:APPDATA/.minecraft'
-    uses: .github/workflows/release_test.yml
+  target:
+    needs: [check-version]
+    uses: .github/workflows/target.yml
     with:
-      runs-on: ${{ matrix.os }}
-      artifact: mcmod_manager-${{ matrix.name }}-${{ github.ref_name }}
-      dot_minecraft: ${{ matrix.dot_minecraft }}
-  release:
-    name: Upload Release Artifacts
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/download-artifact@v7
-    - uses: softprops/action-gh-release@v2.5.0
-      with:
-        token: ${{ secrets.RELEASE_TOKEN }}
-        files: '*'
+      release: true

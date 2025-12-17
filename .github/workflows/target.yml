@@ -8,6 +8,9 @@ on:
         type: boolean
         default: false
 
+env:
+  RUST_BACKTRACE: '1'
+
 jobs:
   cargo-lint:
     name: Cargo Linting
@@ -70,6 +73,7 @@ jobs:
           ${{ env.release-dir }}.tar.gz
           ${{ env.release-dir }}.zip
   release:
+    needs: [cargo-lint, cargo-build]
     name: Upload Release
     if: ${{ inputs.release }}
     runs-on: ubuntu-latest

@@ -9,42 +9,5 @@ env:
   RUST_BACKTRACE: '1'
 
 jobs:
-  cargo-lint:
-    name: Cargo Linting
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v5
-    - name: Cargo Format
-      run: cargo fmt --check
-    - name: Cargo Clippy
-      run: cargo clippy --tests -- -D warnings -D clippy::pedantic
-  cargo-build:
-    name: Cargo Build
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        include:
-        - os: ubuntu-latest
-          dot_minecraft: $HOME/.minecraft
-        - os: macos-latest
-          dot_minecraft: $HOME/.minecraft
-        - os: windows-latest
-          dot_minecraft: '$env:APPDATA\.minecraft'
-    runs-on: ${{ matrix.os }}
-    steps:
-    - uses: actions/checkout@v5
-    - name: Cargo Build
-      run: cargo build
-    - uses: actions/upload-artifact@v6
-      with:
-        if-no-files-found: error
-        path: |
-          target/debug/mcmod
-          target/debug/mcmod.exe
-        name: mcmod-${{ matrix.os }}
-    - name: Cargo Test
-      run: cargo test
-    - name: Release Test
-      run: |
-        mkdir "${{ matrix.dot_minecraft }}"
-        cargo run -- examples/release_test.toml
+  target:
+    uses: .github/workflows/target.yml
