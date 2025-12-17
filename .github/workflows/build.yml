@@ -1,0 +1,69 @@
+name: Cargo Build
+
+on:
+  workflow_call:
+    inputs:
+      release:
+        description: Whether to do a release build.
+        type: boolean
+        default: false
+      runs-on:
+        description: The system to run on. ex. 'ubuntu-latest'
+        type: string
+        required: true
+      name:
+        description: The subname of the artifact. ex. 'ubuntu'
+        type: string
+        required: true
+      archive:
+        description: The archive tool to use, either 'tar' or 'zip'
+        type: string
+        required: true
+      dot_minecraft:
+        description: The path to use for .minecraft
+        type: string
+        required: true
+      exe:
+        description: The name of the build executable
+        type: string
+        required: true
+
+env:
+  RUST_BACKTRACE: '1'
+
+jobs:
+  cargo-build:
+    name: Cargo Build
+    runs-on: ${{ inputs.runs-on }}
+    env:
+      release-dir: mcmod_manager-${{ inputs.name }}-${{ github.ref_name }}
+    steps:
+    - uses: actions/checkout@v5
+    - name: Cargo Test
+      run: cargo test
+    - name: Cargo Build
+      run: cargo build ${{ inputs.release && '--release' || '' }}
+    - name: Prepare Archive
+      env:
+        target-dir: ${{ inputs.release && 'release' || 'debug' }}
+      run: |
+        mkdir ${{ env.release-dir }}
+        cp target/${{ env.target-dir }}/${{ inputs.exe }} ${{ env.release-dir }}
+        cp README.md ${{ env.release-dir }}
+        cp -r examples ${{ env.release-dir }}/examples
+    - name: Make Tar Archive
+      if: ${{ inputs.archive == 'tar' }}
+      run: tar czvf ${{ env.release-dir }}.tar.gz ${{ env.release-dir }}
+    - name: Make Zip Archive
+      if: ${{ inputs.archive == 'zip' }}
+      run: zip -r ${{ env.release-dir }}.zip ${{ env.release-dir }}
+    - name: Setup .minecraft
+      run: mkdir ${{ inputs.dot_minecraft }}
+    - name: Run Integration Test
+      run: mcmod examples/integration_test.toml
+    - uses: actions/upload-artifact@v6
+      with:
+        if-no-files-found: error
+        path: |
+          mcmod_manager-${{ matrix.name }}-${{ github.ref_name }}.tar.gz
+          mcmod_manager-${{ matrix.name }}-${{ github.ref_name }}.zip

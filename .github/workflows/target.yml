@@ -20,57 +20,33 @@ jobs:
     - name: Cargo Format
       run: cargo fmt --check
     - name: Cargo Clippy
-      run: cargo clippy --tests -- -D warnings -D clippy::pedantic
+      run: cargo clippy --tests -- -D warnings -D clippy::pedantic      
   cargo-build:
     name: Cargo Build
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        runs-on: [ubuntu-latest, macruns-on-latest, windows-latest]
         include:
-        - os: ubunutu-latest
+        - runs-on: ubunutu-latest
           name: linux
           archive: tar
           dot_minecraft: '$HOME/.minecraft'
-        - os: macos-latest
-          name: macos
+          exe: mcmod
+        - runs-on: macruns-on-latest
+          name: macruns-on
           archive: tar
           dot_minecraft: '$HOME/.minecraft'
-        - os: windows-latest
+          exe: mcmod
+        - runs-on: windows-latest
           name: windows
           archive: zip
           dot_minecraft: '$env:APPDATA/.minecraft'
-    runs-on: ${{ matrix.os }}
-    env:
-      release-dir: mcmod_manager-${{ matrix.name }}-${{ github.ref_name }}
-    steps:
-    - uses: actions/checkout@v5
-    - name: Cargo Test
-      run: cargo test
-    - name: Cargo Build (Dev)
-      if: ${{ !inputs.release }}
-      run: cargo build
-    - name: Cargo Build (Release)
-      if: ${{ inputs.release }}
-      run: cargo build --release
-    - name: Prepare Archive
-      run: |
-        mkdir ${{ env.release-dir }}
-        cp target/release/mcmod ${{ env.release-dir }}
-        cp README.md ${{ env.release-dir }}
-        cp -r examples ${{ env.release-dir }}/examples
-    - name: Make Tar Archive
-      if: ${{ matrix.archive == 'tar' }}
-      run: tar czvf ${{ env.release-dir }}.tar.gz ${{ env.release-dir }}
-    - name: Make Zip Archive
-      if: ${{ matrix.archive == 'zip' }}
-      run: zip -r ${{ env.release-dir }}.zip ${{ env.release-dir }}
-    - name: Setup .minecraft
-      run: mkdir ${{ matrix.dot_minecraft }}
-    - name: Run Integration Test
-      run: mcmod examples/integration_test.toml
-    - uses: actions/upload-artifact@v6
-      with:
-        if-no-files-found: error
-        path: |
-          ${{ env.release-dir }}.tar.gz
-          ${{ env.release-dir }}.zip
+          exe: mcmod.exe
+    uses: ./.github/workflows/build.yml
+    with:
+      release: ${{ inputs.release }}
+      runs-on: ${{ matrix.runs-on }}
+      name: ${{ matrix.name }}
+      archive: ${{ matrix.archive }}
+      dot_minecraft: ${{ matrix.dot_minecraft }}
+      exe: ${{ matrix.exe }}
