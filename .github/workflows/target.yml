@@ -27,7 +27,7 @@ jobs:
       matrix:
         runs-on: [ubuntu-latest, macos-latest, windows-latest]
         include:
-        - runs-on: ubunutu-latest
+        - runs-on: ubuntu-latest
           build-name: linux
           archive: tar
           dot_minecraft: '$HOME/.minecraft'
