@@ -37,6 +37,7 @@ jobs:
     runs-on: ${{ inputs.runs-on }}
     env:
       release-dir: mcmod_manager-${{ inputs.build-name }}-${{ inputs.release && github.ref_name || github.run_id }}
+      exe: target/${{ inputs.release && 'release' || 'debug' }}/${{ inputs.exe }}
     steps:
     - uses: actions/checkout@v5
     - name: Cargo Test
@@ -46,10 +47,10 @@ jobs:
     - name: Prepare Archive
       env:
         target-dir: ${{ inputs.release && 'release' || 'debug' }}
+        exe: target/${{ env.target-dir }}/${{ inputs.exe }}
       run: |
         mkdir ${{ env.release-dir }}
-        ls target/${{ env.target-dir }}
-        cp target/${{ env.target-dir }}/${{ inputs.exe }} ${{ env.release-dir }}
+        cp ${{ env.exe }} ${{ env.release-dir }}
         cp README.md ${{ env.release-dir }}
         cp -r examples ${{ env.release-dir }}/examples
     - name: Make Tar Archive
@@ -61,7 +62,7 @@ jobs:
     - name: Setup .minecraft
       run: mkdir ${{ inputs.dot_minecraft }}
     - name: Run Integration Test
-      run: ./${{ inputs.exe }} examples/integration_test.toml
+      run: ${{ env.exe }} examples/integration_test.toml
     - uses: actions/upload-artifact@v6
       with:
         if-no-files-found: error
