@@ -96,7 +96,7 @@ impl Client {
     /// Download a single file
     #[cfg(test)]
     pub fn download_file(&self, file_url: &str) -> Result<Vec<u8>> {
-        Ok(self.get(file_url)?.bytes().map(|x| x.into())?)
+        Ok(self.get(file_url)?.bytes().map(Into::into)?)
     }
 
     /// Download the files of a version into a list of tuples of the file info and the bytes
@@ -107,7 +107,7 @@ impl Client {
     ) -> Result<Vec<(&'a types::ModFile, Vec<u8>)>> {
         let mut result = Vec::<(&'a types::ModFile, Vec<u8>)>::new();
         for version_file in &version.files {
-            result.push((version_file, self.download_file(&version_file.url)?))
+            result.push((version_file, self.download_file(&version_file.url)?));
         }
         Ok(result)
     }
@@ -286,9 +286,10 @@ mod tests {
         let version = client
             .get_project("faithful-32x")
             .expect("Client should get a project");
-        if !version.game_versions.contains(&game_version) || !version.loaders.contains(&loader) {
-            panic!("Client should get the latest project version for a specific target {version:?}")
-        }
+        assert!(
+            version.game_versions.contains(&game_version) && version.loaders.contains(&loader),
+            "Client should get the latest project version for a specific target {version:?}"
+        );
     }
 
     #[test]
@@ -299,9 +300,10 @@ mod tests {
         let version = client
             .get_project_version_latest(&ProjectSlug::from("faithful-32x"), &game_version, loader)
             .expect("Client should get a project version");
-        if !version.game_versions.contains(&game_version) || !version.loaders.contains(&loader) {
-            panic!("Client should get the latest project version for a specific target {version:?}")
-        }
+        assert!(
+            version.game_versions.contains(&game_version) && version.loaders.contains(&loader),
+            "Client should get the latest project version for a specific target {version:?}"
+        );
     }
 
     #[test]
@@ -312,9 +314,11 @@ mod tests {
         let version = client
             .get_project_version_latest(&ProjectSlug::from("iris"), &game_version, loader)
             .expect("Client should get a project version");
-        if !version.game_versions.contains(&game_version) || !version.loaders.contains(&loader) {
-            panic!("Client should get the latest project version for a specific target {version:?}")
-        }
+
+        assert!(
+            version.game_versions.contains(&game_version) && version.loaders.contains(&loader),
+            "Client should get the latest project version for a specific target {version:?}"
+        );
         let _files = client
             .download_version_files(&version)
             .expect("Client should be able to download files");

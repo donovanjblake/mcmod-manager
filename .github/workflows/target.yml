@@ -1,0 +1,53 @@
+name: Cargo Build
+
+on:
+  workflow_call:
+    inputs:
+      release:
+        description: Whether to do a release build.
+        type: boolean
+        default: false
+
+env:
+  RUST_BACKTRACE: '1'
+
+jobs:
+  cargo-lint:
+    name: Cargo Lint
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - name: Cargo Format
+      run: cargo fmt --check
+    - name: Cargo Clippy
+      run: cargo clippy --tests -- -D warnings -D clippy::pedantic      
+  cargo-build:
+    name: Cargo Build
+    strategy:
+      max-parallel: 2
+      matrix:
+        runs-on: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+        - runs-on: ubuntu-latest
+          build-name: linux
+          archive: tar
+          dot_minecraft: '$HOME/.minecraft'
+          exe: mcmod
+        - runs-on: macos-latest
+          build-name: macos
+          archive: tar
+          dot_minecraft: '$HOME/.minecraft'
+          exe: mcmod
+        - runs-on: windows-latest
+          build-name: windows
+          archive: zip
+          dot_minecraft: '$env:APPDATA/.minecraft'
+          exe: mcmod.exe
+    uses: ./.github/workflows/build.yml
+    with:
+      release: ${{ inputs.release }}
+      runs-on: ${{ matrix.runs-on }}
+      build-name: ${{ matrix.build-name }}
+      archive: ${{ matrix.archive }}
+      dot_minecraft: ${{ matrix.dot_minecraft }}
+      exe: ${{ matrix.exe }}

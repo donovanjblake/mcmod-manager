@@ -90,8 +90,8 @@ default paths used by the program.
 | Path            | Windows                             | MacOS                                      | Linux                              |
 | :-------------- | :---------------------------------- | :----------------------------------------- | :--------------------------------- |
 | `<HOME>`        | `C:\Users\<USER>`                   | `/Users/<USER>`                            | `/home/<USER>`                     |
-| `data`          | `<HOME>\AppData\Local\mcmod`        | `<HOME>/Library/Application Support/mcmod` | `/home/<USER>/.local/shares/mcmod` |
-| `dot_minecraft` | `<HOME>\AppData\Roaming\.minecraft` | `<HOME>/.minecraft`                        | `/home/<USER>/.minecraft`          |
+| `data`          | `<HOME>\AppData\Local\mcmod`        | `<HOME>/Library/Application Support/mcmod` | `<HOME>/.local/shares/mcmod` |
+| `dot_minecraft` | `<HOME>\AppData\Roaming\.minecraft` | `<HOME>/.minecraft`                        | `<HOME>/.minecraft`          |
 | `temp`          | `C:\Temp\mcmod`                     | `confstr(_CS_DARWIN_USER_TEMP_DIR,…)`      | `/tmp/mcmod`                       |
 
 `paths.data`

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::PathBuf};
 
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::types::{MinecraftVersion, ModLoader, ProjectSlug};
 
 /// Configuration containing paths and projects to use
@@ -43,6 +43,7 @@ impl Config {
                     Some(project.1.game_version.take().unwrap().error_for_invalid()?);
             }
         }
+        result.create_paths()?;
         Ok(result)
     }
 
@@ -64,6 +65,15 @@ impl Config {
         }
         result.sort_by(|l, r| l.name.as_str().cmp(r.name.as_str()));
         result
+    }
+
+    /// Create the paths used by the tool
+    pub fn create_paths(&self) -> Result<()> {
+        std::fs::create_dir_all(&self.paths.data)
+            .map_err(|_| Error::CreatePath(self.paths.data.clone()))?;
+        std::fs::create_dir_all(&self.paths.temp)
+            .map_err(|_| Error::CreatePath(self.paths.temp.clone()))?;
+        Ok(())
     }
 }
 
@@ -173,7 +183,7 @@ mod tests {
 
     fn load_test_config() -> Config {
         Config::loads(
-            std::fs::read_to_string("examples/integration_test.toml")
+            std::fs::read_to_string("examples/workspace_test.toml")
                 .expect("Failure to read test config")
                 .as_str(),
         )
@@ -183,7 +193,7 @@ mod tests {
     fn create_test_paths() {
         let path = PathBuf::from(".test/.minecraft");
         if !path.exists() {
-            std::fs::create_dir_all(path).expect("Failure to create test path")
+            std::fs::create_dir_all(path).expect("Failure to create test path");
         }
     }
 

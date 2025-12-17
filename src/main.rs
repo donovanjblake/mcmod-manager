@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use error::Result;
+use error::{Error, Result};
 
 use types::{MinecraftVersion, ModDB, ModLoader, ModVersion};
 
@@ -50,7 +50,9 @@ fn load_config(cli: &Cli) -> Result<config::Config> {
         .config
         .clone()
         .unwrap_or_else(|| PathBuf::from("./mcmod.toml"));
-    let mut mcmod = config::Config::loads(std::fs::read_to_string(config_path)?.as_str())?;
+    let text =
+        std::fs::read_to_string(&config_path).map_err(|_| Error::ReadPath(config_path.clone()))?;
+    let mut mcmod = config::Config::loads(text.as_str())?;
     cli.game_version
         .as_ref()
         .inspect(|x| mcmod.defaults.game_version = (*x).clone());
@@ -187,8 +189,8 @@ mod tests {
         assert_eq!(cli.config, None, "Cli shall set falsy defaults");
         assert_eq!(cli.game_version, None, "Cli shall set falsy defaults");
         assert_eq!(cli.loader, None, "Cli shall set falsy defaults");
-        assert_eq!(cli.download, false, "Cli shall set falsy defaults");
-        assert_eq!(cli.install, false, "Cli shall set falsy defaults");
+        assert!(!cli.download, "Cli shall set falsy defaults");
+        assert!(!cli.install, "Cli shall set falsy defaults");
     }
 
     #[test]
@@ -219,8 +221,8 @@ mod tests {
             Some(ModLoader::Minecraft),
             "Cli shall read the input mod loader"
         );
-        assert_eq!(cli.download, true, "Cli shall set the download flag");
-        assert_eq!(cli.install, true, "Cli shall set the install flag");
+        assert!(cli.download, "Cli shall set the download flag");
+        assert!(cli.install, "Cli shall set the install flag");
     }
 
     #[test]
@@ -251,8 +253,8 @@ mod tests {
             Some(ModLoader::Minecraft),
             "Cli shall read the input mod loader"
         );
-        assert_eq!(cli.download, true, "Cli shall set the install flag");
-        assert_eq!(cli.install, true, "Cli shall set the install flag");
+        assert!(cli.download, "Cli shall set the install flag");
+        assert!(cli.install, "Cli shall set the install flag");
     }
 
     #[test]
@@ -281,7 +283,7 @@ mod tests {
 
     fn load_test_config() -> config::Config {
         config::Config::loads(
-            fs::read_to_string("examples/integration_test.toml")
+            fs::read_to_string("examples/workspace_test.toml")
                 .expect("Failure to read test config")
                 .as_str(),
         )
@@ -289,11 +291,10 @@ mod tests {
     }
 
     fn create_test_paths() {
+        // Cannot remove test paths. todo: use a virtual file system so file tests can run properly
         let path = PathBuf::from(".test/.minecraft");
-        if path.exists() {
-            std::fs::remove_dir_all(&path).expect("Failure to remove test path");
-        }
-        fs::create_dir_all(&path).expect("Failure to create test path");
+        fs::create_dir_all(&path)
+            .unwrap_or_else(|_| panic!("Test path {} should be creatable.", path.display()));
     }
 
     fn check_children_count(path: &PathBuf, count: usize) {
@@ -310,7 +311,6 @@ mod tests {
         let mod_config = load_test_config();
         let mod_solver = solver::ModSolver::new(&mod_config);
         let mod_db = mod_solver.solve().expect("Failure to resolve versions");
-        prepare_files(&mod_config, &mod_db, false);
         prepare_files(&mod_config, &mod_db, true);
         let minecraft = &mod_config.paths.dot_minecraft;
         check_children_count(&minecraft.join("datapacks"), 1);

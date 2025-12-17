@@ -27,7 +27,8 @@ impl ModClient {
 
     /// Read the database cache at the given path
     pub fn read_cache(&mut self, cache_json: &PathBuf) -> Result<()> {
-        let text = std::fs::read_to_string(cache_json)?;
+        let text =
+            std::fs::read_to_string(cache_json).map_err(|_| Error::ReadPath(cache_json.clone()))?;
         let temp_db = ModDB::from_json(text.as_str())?;
         self.mod_db.extend(temp_db);
         Ok(())
@@ -36,7 +37,13 @@ impl ModClient {
     /// Dump a database cache to the given path
     pub fn write_cache(&self, cache_json: &PathBuf) -> Result<()> {
         let text = serde_json::to_string(&self.mod_db)?;
-        std::fs::write(cache_json, text)?;
+        let parent = cache_json
+            .parent()
+            .ok_or_else(|| Error::MissingPath(cache_json.clone()))?;
+        if !parent.is_dir() {
+            std::fs::create_dir_all(parent).map_err(|_| Error::CreatePath(parent.to_path_buf()))?;
+        }
+        std::fs::write(cache_json, text).map_err(|_| Error::ReadPath(cache_json.clone()))?;
         Ok(())
     }
 

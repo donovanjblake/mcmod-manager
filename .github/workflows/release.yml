@@ -5,27 +5,9 @@ on:
     tags: ['v*']
 
 jobs:
-  cargo-lint:
-    name: Cargo Linting
+  check-version:
+    name: Check Version
     runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v5
-    - name: Cargo Format
-      run: cargo fmt --check
-    - name: Cargo Clippy
-      run: cargo clippy -- -D warnings -D clippy::pedantic
-  cargo-test:
-    name: Cargo Test
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v5
-    - name: Cargo Test
-      run: cargo test --release
-  cargo-build:
-    name: Cargo Build
-    runs-on: ubuntu-latest
-    env:
-      release-dir: mcmod_manager-${{ github.ref_name }}
     steps:
     - uses: actions/checkout@v5
     - name: Check Version
@@ -42,19 +24,18 @@ jobs:
           exit 1
         fi
         echo "Versions match!"
-    - name: Cargo Build
-      run: cargo build --release
-    - uses: actions/upload-artifact@v6
-      with:
-        path: target/release/mcmod
-    - name: Make Release Archive
-      run: |
-        mkdir ${{ env.release-dir }}
-        cp target/release/mcmod ${{ env.release-dir }}
-        cp README.md ${{ env.release-dir }}
-        cp -r examples ${{ env.release-dir }}/examples
-        tar cvf ${{ env.release-dir }}.tar ${{ env.release-dir }}
+  target:
+    needs: [check-version]
+    uses: ./.github/workflows/target.yml
+    with:
+      release: true
+  upload-release:
+    name: Upload Release
+    needs: [target]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/download-artifact@v7
     - uses: softprops/action-gh-release@v2.5.0
       with:
         token: ${{ secrets.RELEASE_TOKEN }}
-        files: ${{ env.release-dir }}.tar
+        files: '*'
