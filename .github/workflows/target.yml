@@ -25,15 +25,15 @@ jobs:
     name: Cargo Build
     strategy:
       matrix:
-        runs-on: [ubuntu-latest, macruns-on-latest, windows-latest]
+        runs-on: [ubuntu-latest, macos-latest, windows-latest]
         include:
         - runs-on: ubunutu-latest
           name: linux
           archive: tar
           dot_minecraft: '$HOME/.minecraft'
           exe: mcmod
-        - runs-on: macruns-on-latest
-          name: macruns-on
+        - runs-on: macos-latest
+          name: macos
           archive: tar
           dot_minecraft: '$HOME/.minecraft'
           exe: mcmod

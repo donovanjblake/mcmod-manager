@@ -47,6 +47,7 @@ jobs:
       env:
         target-dir: ${{ inputs.release && 'release' || 'debug' }}
       run: |
+        echo ${{ inputs.name }}
         mkdir ${{ env.release-dir }}
         cp target/${{ env.target-dir }}/${{ inputs.exe }} ${{ env.release-dir }}
         cp README.md ${{ env.release-dir }}
@@ -65,5 +66,5 @@ jobs:
       with:
         if-no-files-found: error
         path: |
-          mcmod_manager-${{ matrix.name }}-${{ github.ref_name }}.tar.gz
-          mcmod_manager-${{ matrix.name }}-${{ github.ref_name }}.zip
+          mcmod_manager-${{ inputs.name }}-${{ github.ref_name }}.tar.gz
+          mcmod_manager-${{ inputs.name }}-${{ github.ref_name }}.zip
