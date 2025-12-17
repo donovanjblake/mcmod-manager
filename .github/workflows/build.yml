@@ -45,9 +45,6 @@ jobs:
     - name: Cargo Build
       run: cargo build ${{ inputs.release && '--release' || '' }}
     - name: Prepare Archive
-      env:
-        target-dir: ${{ inputs.release && 'release' || 'debug' }}
-        exe: target/${{ env.target-dir }}/${{ inputs.exe }}
       run: |
         mkdir ${{ env.release-dir }}
         cp ${{ env.exe }} ${{ env.release-dir }}
