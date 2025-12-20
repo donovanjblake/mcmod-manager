@@ -188,10 +188,14 @@ fn parse_cli() -> Result<Cli> {
     match &mut cli.command {
         Command::Validate => {}
         Command::Install(cmd) => {
-            cmd.game_version = Some(cmd.game_version.take().unwrap().error_for_invalid()?);
+            if let Some(game_version) = cmd.game_version.take() {
+                cmd.game_version = Some(game_version.error_for_invalid()?);
+            }
         }
         Command::Download(cmd) => {
-            cmd.game_version = Some(cmd.game_version.take().unwrap().error_for_invalid()?);
+            if let Some(game_version) = cmd.game_version.take() {
+                cmd.game_version = Some(game_version.error_for_invalid()?);
+            }
         }
     }
     Ok(cli)
