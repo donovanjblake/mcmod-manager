@@ -12,10 +12,9 @@ mod mcmod_client;
 mod solver;
 mod types;
 
-/// The options passed to the program through the command line interface
-#[derive(Parser, Debug)]
-#[allow(clippy::struct_excessive_bools)]
-struct Cli {
+/// The options to be passed to an install or download command
+#[derive(clap::Parser, Debug)]
+struct Install {
     /// The config file to load. Defaults to ./mcmod.toml
     config: Option<PathBuf>,
 
@@ -27,36 +26,72 @@ struct Cli {
     #[arg(long, short)]
     loader: Option<ModLoader>,
 
-    /// Download the mod fles without installing them
-    #[arg(long, short)]
-    download: bool,
-
-    /// Install mods, resource packs, etc into .minecraft directory
-    #[arg(long, short)]
-    install: bool,
-
     /// Use the offline mod file cache
     #[arg(long)]
     offline: bool,
+}
 
-    /// Validate internal data types
-    #[arg(long)]
-    validate: bool,
+/// The options to be passed to an install or download command
+#[derive(clap::Parser, Debug)]
+struct Download {
+    /// The config file to load. Defaults to ./mcmod.toml
+    config: Option<PathBuf>,
+
+    /// Override the default game version in the config
+    #[arg(long, short = 'v', value_parser = clap::value_parser!(MinecraftVersion))]
+    game_version: Option<MinecraftVersion>,
+
+    /// Override the default mod loader in the config
+    #[arg(long, short)]
+    loader: Option<ModLoader>,
+}
+
+#[derive(clap::Subcommand, Debug)]
+enum Command {
+    Download(Download),
+    Install(Install),
+    Validate,
+}
+
+impl Command {
+    pub fn is_offline(&self) -> bool {
+        match self {
+            Command::Download(_) | Command::Validate => false,
+            Command::Install(cmd) => cmd.offline,
+        }
+    }
+    pub fn is_validate(&self) -> bool {
+        matches!(self, Command::Validate)
+    }
+    pub fn is_install(&self) -> bool {
+        matches!(self, Command::Install(_))
+    }
+}
+
+#[derive(clap::Parser, Debug)]
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
 }
 
 /// Load a config, overriding values as specified in cli
 fn load_config(cli: &Cli) -> Result<config::Config> {
-    let config_path = cli
-        .config
+    let (config_path, game_version, loader) = match &cli.command {
+        Command::Validate => unimplemented!("Cannot load a config for validate"),
+        Command::Install(cmd) => (&cmd.config, &cmd.game_version, cmd.loader),
+        Command::Download(cmd) => (&cmd.config, &cmd.game_version, cmd.loader),
+    };
+
+    let config_path = config_path
         .clone()
         .unwrap_or_else(|| PathBuf::from("./mcmod.toml"));
     let text =
         std::fs::read_to_string(&config_path).map_err(|_| Error::ReadPath(config_path.clone()))?;
     let mut mcmod = config::Config::loads(text.as_str())?;
-    cli.game_version
+    game_version
         .as_ref()
         .inspect(|x| mcmod.defaults.game_version = (*x).clone());
-    cli.loader.inspect(|x| mcmod.defaults.loader = *x);
+    loader.inspect(|x| mcmod.defaults.loader = *x);
     Ok(mcmod)
 }
 
@@ -150,16 +185,21 @@ fn prepare_files(mod_config: &config::Config, mod_db: &ModDB, install: bool) {
 
 fn parse_cli() -> Result<Cli> {
     let mut cli = Cli::parse();
-    if cli.game_version.is_some() {
-        cli.game_version = Some(cli.game_version.take().unwrap().error_for_invalid()?);
+    match &mut cli.command {
+        Command::Validate => {}
+        Command::Install(cmd) => {
+            cmd.game_version = Some(cmd.game_version.take().unwrap().error_for_invalid()?);
+        }
+        Command::Download(cmd) => {
+            cmd.game_version = Some(cmd.game_version.take().unwrap().error_for_invalid()?);
+        }
     }
     Ok(cli)
 }
 
 fn main() {
     let cli = parse_cli().expect("Failure to parse cli");
-    let mod_config = load_config(&cli).expect("Failure to load config");
-    if cli.validate {
+    if cli.command.is_validate() {
         let client = mcmod_client::ModClient::new();
         let errors = client.validate_structs().expect("Failed to compare data");
         if !errors.is_empty() {
@@ -167,14 +207,13 @@ fn main() {
         }
     }
 
-    let mod_db = if cli.offline {
+    let mod_config = load_config(&cli).expect("Failure to load config");
+    let mod_db = if cli.command.is_offline() {
         solve_versions_offline(&mod_config).expect("Failure to resolve projects")
     } else {
         solve_versions(&mod_config).expect("Failure to resolve projects")
     };
-    if cli.download || cli.install {
-        prepare_files(&mod_config, &mod_db, cli.install);
-    }
+    prepare_files(&mod_config, &mod_db, cli.command.is_install());
 }
 
 #[cfg(test)]
@@ -184,101 +223,137 @@ mod tests {
 
     #[test]
     fn test_cli_parse_empty() {
-        let cli =
-            Cli::try_parse_from(["exe"]).expect("Cli shall be able to run with zero arguments");
-        assert_eq!(cli.config, None, "Cli shall set falsy defaults");
-        assert_eq!(cli.game_version, None, "Cli shall set falsy defaults");
-        assert_eq!(cli.loader, None, "Cli shall set falsy defaults");
-        assert!(!cli.download, "Cli shall set falsy defaults");
-        assert!(!cli.install, "Cli shall set falsy defaults");
+        Cli::try_parse_from(["exe"]).expect_err("Cli shall require a command");
     }
 
     #[test]
-    fn test_cli_parse_all() {
+    fn test_cli_parse_install_long() {
         let cli = Cli::try_parse_from([
             "exe",
+            "install",
             "config",
             "--game-version",
             "1.23.4",
             "--loader",
             "minecraft",
-            "--download",
-            "--install",
+            "--offline",
         ])
         .expect("Cli shall accept every long option");
+        let Command::Install(cmd) = cli.command else {
+            panic!("Cli shall parse an install command");
+        };
         assert_eq!(
-            cli.config,
+            cmd.config,
             Some(PathBuf::from("config")),
             "Cli shall read the input config"
         );
         assert_eq!(
-            cli.game_version,
+            cmd.game_version,
             Some(MinecraftVersion::from("1.23.4")),
             "Cli shall read the input game version"
         );
         assert_eq!(
-            cli.loader,
+            cmd.loader,
             Some(ModLoader::Minecraft),
             "Cli shall read the input mod loader"
         );
-        assert!(cli.download, "Cli shall set the download flag");
-        assert!(cli.install, "Cli shall set the install flag");
+        assert!(cmd.offline, "Cli shall set the offline flag");
     }
 
     #[test]
-    fn test_cli_parse_short() {
+    fn test_cli_parse_install_short() {
         let cli = Cli::try_parse_from([
             "exe",
+            "install",
             "config",
             "-v",
             "1.23.4",
             "-l",
             "minecraft",
-            "-d",
-            "-i",
         ])
         .expect("Cli shall accept every short option");
+        let Command::Install(cmd) = cli.command else {
+            panic!("Cli shall parse an install command");
+        };
         assert_eq!(
-            cli.config,
+            cmd.config,
             Some(PathBuf::from("config")),
             "Cli shall read the input config"
         );
         assert_eq!(
-            cli.game_version,
+            cmd.game_version,
             Some(MinecraftVersion::from("1.23.4")),
             "Cli shall read the input game version"
         );
         assert_eq!(
-            cli.loader,
+            cmd.loader,
             Some(ModLoader::Minecraft),
             "Cli shall read the input mod loader"
         );
-        assert!(cli.download, "Cli shall set the install flag");
-        assert!(cli.install, "Cli shall set the install flag");
     }
 
     #[test]
-    fn test_cli_parse_require_game_value_version() {
-        Cli::try_parse_from(["exe", "--game-version"])
-            .expect_err("Cli shall require a value if the --game-version option is specified");
+    fn test_cli_parse_download_long() {
+        let cli = Cli::try_parse_from([
+            "exe",
+            "download",
+            "config",
+            "--game-version",
+            "1.23.4",
+            "--loader",
+            "minecraft",
+        ])
+        .expect("Cli shall accept every long option");
+        let Command::Download(cmd) = cli.command else {
+            panic!("Cli shall parse a download command");
+        };
+        assert_eq!(
+            cmd.config,
+            Some(PathBuf::from("config")),
+            "Cli shall read the input config"
+        );
+        assert_eq!(
+            cmd.game_version,
+            Some(MinecraftVersion::from("1.23.4")),
+            "Cli shall read the input game version"
+        );
+        assert_eq!(
+            cmd.loader,
+            Some(ModLoader::Minecraft),
+            "Cli shall read the input mod loader"
+        );
     }
 
     #[test]
-    fn test_cli_parse_require_game_value_version_short() {
-        Cli::try_parse_from(["exe", "-v"])
-            .expect_err("Cli shall require a value if the -v option is specified");
-    }
-
-    #[test]
-    fn test_cli_parse_require_loader_value() {
-        Cli::try_parse_from(["exe", "--loader"])
-            .expect_err("Cli shall require a value if the --loader option is specified");
-    }
-
-    #[test]
-    fn test_cli_parse_require_loader_value_short() {
-        Cli::try_parse_from(["exe", "-l"])
-            .expect_err("Cli shall require a value if the -l option is specified");
+    fn test_cli_parse_download_short() {
+        let cli = Cli::try_parse_from([
+            "exe",
+            "download",
+            "config",
+            "-v",
+            "1.23.4",
+            "-l",
+            "minecraft",
+        ])
+        .expect("Cli shall accept every short option");
+        let Command::Download(cmd) = cli.command else {
+            panic!("Cli shall parse a download command");
+        };
+        assert_eq!(
+            cmd.config,
+            Some(PathBuf::from("config")),
+            "Cli shall read the input config"
+        );
+        assert_eq!(
+            cmd.game_version,
+            Some(MinecraftVersion::from("1.23.4")),
+            "Cli shall read the input game version"
+        );
+        assert_eq!(
+            cmd.loader,
+            Some(ModLoader::Minecraft),
+            "Cli shall read the input mod loader"
+        );
     }
 
     fn load_test_config() -> config::Config {
