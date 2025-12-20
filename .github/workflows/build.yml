@@ -59,7 +59,7 @@ jobs:
     - name: Setup .minecraft
       run: mkdir ${{ inputs.dot_minecraft }}
     - name: Run Integration Test
-      run: ${{ env.exe }} examples/integration_test.toml -i
+      run: ${{ env.exe }} install examples/integration_test.toml
     - name: Upload Artifact (tar)
       if: ${{ inputs.archive == 'tar' }}
       uses: actions/upload-artifact@v6
