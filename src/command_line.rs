@@ -2,7 +2,7 @@ use crate::{MinecraftVersion, ModLoader};
 use clap::Parser;
 use std::path::PathBuf;
 
-/// The options to be passed to an install or download command
+/// Download and install mods
 #[derive(Parser, Debug)]
 pub struct Install {
     /// The config file to load. Defaults to ./mcmod.toml
@@ -21,7 +21,7 @@ pub struct Install {
     pub offline: bool,
 }
 
-/// The options to be passed to an install or download command
+/// Download mods without installing them
 #[derive(Parser, Debug)]
 pub struct Download {
     /// The config file to load. Defaults to ./mcmod.toml
@@ -40,6 +40,7 @@ pub struct Download {
 pub enum Command {
     Download(Download),
     Install(Install),
+    /// Validate program data against the database
     Validate,
 }
 
