@@ -9,7 +9,7 @@ env:
 jobs:
   conventional_name:
     uses: ./.github/workflows/conventional_name.yml
-    inputs:
+    with:
       name: github.event.title
   target:
     uses: ./.github/workflows/target.yml
