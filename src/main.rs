@@ -154,6 +154,7 @@ fn main() {
     if let Command::Install(install) = cli.command
         && install.clear
     {
+        println!("Removing old install");
         manager.clear().expect("Failure to clear files");
     }
     prepare_files(&manager, &mod_db);
