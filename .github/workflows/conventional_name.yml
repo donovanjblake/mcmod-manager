@@ -14,9 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Check Name
+      shell: python
       run: |
-        if [[ "${{ inputs.name }}" =~ ^(chore|docs|feat|fix)\!?: .*$ ]]; then
-          echo "::error::Pull request title should follow conventional naming."
-          echo "::notice::Allowed types are chore, docs, feat, and fix."
-          exit 1
-        fi
+        import re
+        assert (
+          re.fullmatch(r"^(chore|docs|feat|fix)!?: .*", "fix: bad") is not None,
+          "Invalid conventional name"
+        )
