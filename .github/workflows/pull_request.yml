@@ -11,9 +11,5 @@ env:
   RUST_BACKTRACE: '1'
 
 jobs:
-  conventional_name:
-    uses: ./.github/workflows/conventional_name.yml
-    with:
-      name: ${{ github.event.pull_request.title }}
   target:
     uses: ./.github/workflows/target.yml
