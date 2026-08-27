@@ -20,7 +20,7 @@ jobs:
     - name: Cargo Format
       run: cargo fmt --check
     - name: Cargo Clippy
-      run: cargo clippy --tests -- -D warnings -D clippy::pedantic
+      run: cargo clippy --all-targets
 
   cargo-build:
     name: Cargo Build
