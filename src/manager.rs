@@ -47,7 +47,7 @@ impl ModFileManager {
 
     /// Construct the path to a cached download file
     fn cache_path(&self, version_id: VersionId, filename: &String) -> PathBuf {
-        let version_id = version_id.to_string();
+        let version_id = version_id.to_base36();
         self.data_dir
             .join(&version_id[0..2])
             .join(&version_id)
@@ -56,7 +56,7 @@ impl ModFileManager {
 
     /// Return the location of a cached download file
     pub fn find_file(&self, version_id: VersionId, filename: &String) -> Option<PathBuf> {
-        let version_id = version_id.to_string();
+        let version_id = version_id.to_base36();
         let path = self
             .data_dir
             .join(&version_id[0..2])

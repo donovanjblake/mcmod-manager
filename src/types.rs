@@ -124,7 +124,15 @@ fn base64_decode_id(value: &str) -> Result<u64> {
 }
 
 fn base64_encode_id(value: u64) -> String {
-    base64::prelude::BASE64_STANDARD_NO_PAD.encode(value.to_le_bytes())[0..8].to_string()
+    base64::prelude::BASE64_STANDARD_NO_PAD
+        .encode(value.to_le_bytes())
+        .get(0..8)
+        .expect("infalible")
+        .to_string()
+}
+
+fn base36_encode_id(value: u64) -> String {
+    base36::encode(&value.to_le_bytes())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
@@ -202,18 +210,30 @@ impl VersionId {
     pub fn inner(self) -> u64 {
         self.0
     }
+
+    pub fn from_base64(value: &str) -> Result<Self> {
+        Ok(Self(base64_decode_id(value)?))
+    }
+
+    pub fn to_base36(self) -> String {
+        base36_encode_id(self.0)
+    }
+
+    pub fn to_base64(self) -> String {
+        base64_encode_id(self.0)
+    }
 }
 
 impl std::fmt::Display for VersionId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", base64_encode_id(self.0))
+        write!(f, "{}", self.to_base64())
     }
 }
 
 impl TryFrom<&str> for VersionId {
     type Error = Error;
     fn try_from(value: &str) -> Result<Self> {
-        Ok(Self(base64_decode_id(value)?))
+        Self::from_base64(value)
     }
 }
 
