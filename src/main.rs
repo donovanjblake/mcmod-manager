@@ -19,7 +19,6 @@ fn load_config(cli: &Cli) -> Result<config::Config> {
     let (config_path, game_version, loader) = match &cli.command {
         Command::Validate => unimplemented!("Cannot load a config for validate"),
         Command::Install(cmd) => (&cmd.config, &cmd.game_version, cmd.loader),
-        Command::Download(cmd) => (&cmd.config, &cmd.game_version, cmd.loader),
     };
 
     let config_path = config_path
@@ -81,7 +80,6 @@ fn prepare_version_files(
     mod_manager: &manager::ModFileManager,
     mod_db: &ModDB,
     version: &ModVersion,
-    install: bool,
 ) {
     let printed_name = mod_db
         .get_project_by_id(version.project_id)
@@ -102,26 +100,20 @@ fn prepare_version_files(
                 .download_file(version.version_id, mod_file)
                 .expect("Failure to download file");
         }
-        if install {
-            println!("  Installing");
-            mod_manager
-                .install_file(
-                    version.version_id,
-                    mod_file,
-                    version.loaders.first().copied(),
-                )
-                .expect("Failure to get file");
-        }
+        println!("  Installing");
+        mod_manager
+            .install_file(
+                version.version_id,
+                mod_file,
+                version.loaders.first().copied(),
+            )
+            .expect("Failure to get file");
     }
 }
 
-fn prepare_files(mod_config: &config::Config, mod_db: &ModDB, install: bool) {
-    let manager = manager::ModFileManager::new(
-        mod_config.paths.data.clone(),
-        mod_config.paths.dot_minecraft.clone(),
-    );
+fn prepare_files(manager: &manager::ModFileManager, mod_db: &ModDB) {
     for version in mod_db.get_versions() {
-        prepare_version_files(&manager, mod_db, version, install);
+        prepare_version_files(manager, mod_db, version);
     }
 }
 
@@ -130,11 +122,6 @@ fn parse_cli() -> Result<Cli> {
     match &mut cli.command {
         Command::Validate => {}
         Command::Install(cmd) => {
-            if let Some(game_version) = cmd.game_version.take() {
-                cmd.game_version = Some(game_version.error_for_invalid()?);
-            }
-        }
-        Command::Download(cmd) => {
             if let Some(game_version) = cmd.game_version.take() {
                 cmd.game_version = Some(game_version.error_for_invalid()?);
             }
@@ -159,7 +146,17 @@ fn main() {
     } else {
         solve_versions(&mod_config).expect("Failure to resolve projects")
     };
-    prepare_files(&mod_config, &mod_db, cli.command.is_install());
+
+    let manager = manager::ModFileManager::new(
+        mod_config.paths.data.clone(),
+        mod_config.paths.dot_minecraft.clone(),
+    );
+    if let Command::Install(install) = cli.command
+        && install.clear
+    {
+        manager.clear().expect("Failure to clear files");
+    }
+    prepare_files(&manager, &mod_db);
 }
 
 #[cfg(test)]
@@ -197,7 +194,11 @@ mod tests {
         let mod_config = load_test_config();
         let mod_solver = solver::ModSolver::new(&mod_config);
         let mod_db = mod_solver.solve().expect("Failure to resolve versions");
-        prepare_files(&mod_config, &mod_db, true);
+        let manager = manager::ModFileManager::new(
+            mod_config.paths.data.clone(),
+            mod_config.paths.dot_minecraft.clone(),
+        );
+        prepare_files(&manager, &mod_db);
         let minecraft = &mod_config.paths.dot_minecraft;
         check_children_count(&minecraft.join("datapacks"), 1);
         check_children_count(&minecraft.join("mods"), 3);
@@ -208,14 +209,19 @@ mod tests {
     fn test_action_offline_install() {
         create_test_paths();
         let mod_config = load_test_config();
+        let manager = manager::ModFileManager::new(
+            mod_config.paths.data.clone(),
+            mod_config.paths.dot_minecraft.clone(),
+        );
+
         let mod_solver = solver::ModSolver::new(&mod_config);
         let mod_db = mod_solver.solve().expect("Failure to resolve versions");
-        prepare_files(&mod_config, &mod_db, false);
+        prepare_files(&manager, &mod_db);
 
         let mod_solver =
             solver::ModSolverOffline::new(&mod_config).expect("Failure to load database cache");
         let mod_db = mod_solver.solve().expect("Failure to resolve versions");
-        prepare_files(&mod_config, &mod_db, true);
+        prepare_files(&manager, &mod_db);
         let minecraft = &mod_config.paths.dot_minecraft;
         check_children_count(&minecraft.join("datapacks"), 1);
         check_children_count(&minecraft.join("mods"), 3);

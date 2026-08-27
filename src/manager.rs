@@ -27,12 +27,27 @@ impl ModFileManager {
         }
     }
 
+    /// Remove all installed mods
+    pub fn clear(&self) -> Result<()> {
+        for x in ["resourcepacks", "shaderpacks", "mods", "datapacks"] {
+            let root = self.dot_minecraft_dir.join(x);
+            if !root.is_dir() {
+                continue;
+            }
+            for x in root.read_dir().map_err(|_| Error::ReadPath(root.clone()))? {
+                let x = x.map_err(|_| Error::ReadPath(root.clone()))?.path();
+                std::fs::remove_file(&x).map_err(|_| Error::ReadPath(x))?;
+            }
+        }
+        Ok(())
+    }
+
     /// Construct the path to a cached download file
     fn cache_path(&self, version_id: VersionId, filename: &String) -> PathBuf {
         let version_id = version_id.to_string();
         self.data_dir
             .join(&version_id[0..2])
-            .join(&version_id[2..])
+            .join(&version_id)
             .join(filename)
     }
 
@@ -42,7 +57,7 @@ impl ModFileManager {
         let path = self
             .data_dir
             .join(&version_id[0..2])
-            .join(&version_id[2..])
+            .join(&version_id)
             .join(filename);
         if path.is_file() { Some(path) } else { None }
     }
@@ -68,6 +83,7 @@ impl ModFileManager {
         self.download_file(version_id, mod_file)
     }
 
+    /// Get the install path for a given loader
     fn install_path(&self, filename: &String, loader: Option<ModLoader>) -> PathBuf {
         self.dot_minecraft_dir
             .join(match loader {
@@ -79,6 +95,7 @@ impl ModFileManager {
             .join(filename)
     }
 
+    /// Get and install the file to the proper path
     pub fn install_file(
         &self,
         version_id: VersionId,

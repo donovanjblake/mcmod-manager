@@ -1,7 +1,7 @@
 # Modlist used by yours truly :)
 
 [defaults]
-game_version = "1.21.8"
+game_version = "26.1.2"
 loader = "fabric"
 
 [projects]
@@ -29,16 +29,14 @@ fpsdisplay.defaults = true
 dungeons-and-taverns.defaults = true
 hopo-better-ruined-portals.defaults = true
 hopo-better-underwater-ruins.defaults = true
-scorched.defaults = true
 stellarity.defaults = true
-wabi-sabi-structures.defaults = true
 
 # other
 blazeandcaves-advancements-pack = { defaults = true, loader = "datapack" }
 
 [optional-projects]
-tidal-towns.defaults = true
-camps_castles_carriages.defaults = true
-saturated.defaults=true
-rebalanced-loot.defaults = true
 biomes-o-plenty.defaults = true
+camps_castles_carriages.defaults = true
+scorched.defaults = true
+tidal-towns.defaults = true
+wabi-sabi-structures.defaults = true
