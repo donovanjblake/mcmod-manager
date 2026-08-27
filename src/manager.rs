@@ -36,6 +36,9 @@ impl ModFileManager {
             }
             for x in root.read_dir().map_err(|_| Error::ReadPath(root.clone()))? {
                 let x = x.map_err(|_| Error::ReadPath(root.clone()))?.path();
+                if !x.is_file() {
+                    continue;
+                }
                 std::fs::remove_file(&x).map_err(|_| Error::ReadPath(x))?;
             }
         }
