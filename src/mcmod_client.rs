@@ -59,12 +59,6 @@ impl ModClient {
         game_version: &types::MinecraftVersion,
         mod_loader: types::ModLoader,
     ) -> Result<VersionId> {
-        if let Ok(version) =
-            self.mod_db
-                .find_project_version_latest(project_slug, game_version, mod_loader)
-        {
-            return Ok(version.version_id);
-        }
         let _project = self.fetch_project_by_slug(project_slug)?;
         let version = self.labrinth_client.get_project_version_latest(
             project_slug,
