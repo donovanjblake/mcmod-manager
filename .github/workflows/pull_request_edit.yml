@@ -12,4 +12,4 @@ jobs:
   conventional_name:
     uses: ./.github/workflows/conventional_name.yml
     with:
-      name: ${{ github.events.pull_request.title }}
+      name: ${{ github.event.pull_request.title }}
