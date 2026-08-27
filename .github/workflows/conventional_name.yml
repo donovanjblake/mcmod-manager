@@ -14,9 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Check Name
-      shell: python
       run: |
-        if [[ "${{ inputs.name }}" =~ ^(chore|docs|feat|fix)!?: .*$ ]]; then
+        if [[ echo "${{ inputs.name }}" | grep -Eq "^(chore|docs|feat|fix)\!?: .*$" ]]; then
           echo "::error::Pull request title should follow conventional naming."
           echo "::notice::Allowed types are chore, docs, feat, and fix."
           exit 1
