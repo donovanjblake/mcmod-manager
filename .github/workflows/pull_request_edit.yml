@@ -2,7 +2,7 @@ name: Pull Request Edit
 
 on:
   pull_request:
-    type: [opened, synchronize, edited, reopened]
+    types: [opened, synchronize, edited, reopened]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
