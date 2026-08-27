@@ -1,0 +1,15 @@
+name: Pull Request Edit
+
+on:
+  pull_request:
+    types: [opened, synchronize, edited, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  conventional_name:
+    uses: ./.github/workflows/conventional_name.yml
+    with:
+      name: ${{ github.event.pull_request.title }}

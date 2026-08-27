@@ -1,0 +1,22 @@
+name: Conventional Name
+
+on:
+  workflow_call:
+    inputs:
+      name:
+        type: string
+        required: true
+        description: The name to check for validity
+
+jobs:
+  check_name:
+    name: Check Name
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check Name
+      shell: python
+      run: |
+        import re
+        assert (
+          re.fullmatch(r"^(chore|docs|feat|fix)!?: .*", "${{ inputs.name }}") is not None
+        ), "Invalid conventional name"
