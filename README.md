@@ -28,30 +28,31 @@ A mod manager for Minecraft written in rust that uses the Modrinth Labrinth API.
 
 ## Arguments
 
-`<COMMAND>`
-
-The command to run.
+```
+Usage: mcmod <COMMAND>
 
 Commands:
+  download  Download mods without installing them
+  install   Download and install mods
+  validate  Validate program data against the database
+  help      Print this message or the help of the given subcommand(s)
 
-- `download [OPTIONS] [CONFIG]`
-  - `[CONFIG]` The config file to load. Defaults to ./mcmod.toml
-  - `-v, --game-version <GAME_VERSION>`
-    Override the default game version in the config
-  - `-l, --loader <LOADER>`
-    Override the default mod loader in the config
-- `install`
-  - `[CONFIG]` The config file to load. Defaults to ./mcmod.toml
-  - `-v, --game-version <GAME_VERSION>`
-    Override the default game version in the config
-  - `-l, --loader <LOADER>`
-    Override the default mod loader in the config
-  - `--offline`
-    Use the offline mod file cache
-- `validate`
-  Developer use. Validate program data gainst the database
-- `help`
-  Display help
+Options:
+  -h, --help  Print help
+```
+
+```
+Usage: mcmod install [OPTIONS] [CONFIG]
+
+Arguments:
+  [CONFIG]  The config file to load. Defaults to ./mcmod.toml
+
+Options:
+  -v, --game-version <GAME_VERSION>  Override the default game version in the config
+  -l, --loader <LOADER>              Override the default mod loader in the config [possible values: minecraft, datapack, fabric, forge, neo-forge, quilt, babric, bta-babric, bukkit, bungee-cord, canvas, folia, geyser, iris, java-agent, legacy-fabric, lite-loader, mod-loader, nil-loader, optifine, ornithe, paper, purpur, rift, spigot, sponge, vanilla, velocity, waterfall]
+      --offline                      Use the offline mod file cache
+  -h, --help                         Print help
+```
 
 **NOTE:** `install` does not work with datapacks, as they have to be installed for each world.
 Datapacks are instead placed in `.minecraft/datapacks` to be installed manually be the user.
