@@ -18,5 +18,5 @@ jobs:
       run: |
         import re
         assert (
-          re.fullmatch(r"^(chore|docs|feat|fix)!?: .*", "${{ inputs.name }}") is not None
+          re.fullmatch(r"^(chore|docs|feat|fix|release)!?: .*", "${{ inputs.name }}") is not None
         ), "Invalid conventional name"
