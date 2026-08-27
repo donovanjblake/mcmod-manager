@@ -24,41 +24,38 @@ A mod manager for Minecraft written in rust that uses the Modrinth Labrinth API.
   faithful-x64 = {defaults = true, loader = "minecraft"}
   ```
 
-- Run `mcmod --install`
+- Run `mcmod install`
 
 ## Arguments
 
-`[CONFIG]`
+```
+Usage: mcmod <COMMAND>
 
-The config file to load. Defaults to ./mcmod.toml.
+Commands:
+  download  Download mods without installing them
+  install   Download and install mods
+  validate  Validate program data against the database
+  help      Print this message or the help of the given subcommand(s)
 
-`-v, --game-version <GAME_VERSION>`
+Options:
+  -h, --help  Print help
+```
 
-Override the default game version in the config.
+```
+Usage: mcmod install [OPTIONS] [CONFIG]
 
-`-l, --loader <LOADER>`
+Arguments:
+  [CONFIG]  The config file to load. Defaults to ./mcmod.toml
 
-Override the default mod loader in the config.
+Options:
+  -v, --game-version <GAME_VERSION>  Override the default game version in the config
+  -l, --loader <LOADER>              Override the default mod loader in the config [possible values: minecraft, datapack, fabric, forge, neo-forge, quilt, babric, bta-babric, bukkit, bungee-cord, canvas, folia, geyser, iris, java-agent, legacy-fabric, lite-loader, mod-loader, nil-loader, optifine, ornithe, paper, purpur, rift, spigot, sponge, vanilla, velocity, waterfall]
+      --offline                      Use the offline mod file cache
+  -h, --help                         Print help
+```
 
-`-d, --download`
-
-Download the files without installing them.
-
-`-i, --install`
-
-Install the project files into their appropriate directories under the `.minecraft` folder. Any
-existing mods, resource packs, or data packs will be deleted.
-
-**NOTE:** This does not work with datapacks, as they have to be installed for each world. Datapacks
-are instead placed in `.minecraft/datapacks` to be installed manually be the user.
-
-`--offline`
-
-Developer use. Validate that all internal enumerations are up to date.
-
-`--validate`
-
-Developer use. Validate that all internal enumerations are up to date.
+**NOTE:** `install` does not work with datapacks, as they have to be installed for each world.
+Datapacks are instead placed in `.minecraft/datapacks` to be installed manually be the user.
 
 ## TOML Format
 
@@ -87,12 +84,12 @@ Developer use. Validate that all internal enumerations are up to date.
 `table`: Optional. A dictionary of path overrides for the program. See the table below for the
 default paths used by the program.
 
-| Path            | Windows                             | MacOS                                      | Linux                              |
-| :-------------- | :---------------------------------- | :----------------------------------------- | :--------------------------------- |
-| `<HOME>`        | `C:\Users\<USER>`                   | `/Users/<USER>`                            | `/home/<USER>`                     |
+| Path            | Windows                             | MacOS                                      | Linux                        |
+| :-------------- | :---------------------------------- | :----------------------------------------- | :--------------------------- |
+| `<HOME>`        | `C:\Users\<USER>`                   | `/Users/<USER>`                            | `/home/<USER>`               |
 | `data`          | `<HOME>\AppData\Local\mcmod`        | `<HOME>/Library/Application Support/mcmod` | `<HOME>/.local/shares/mcmod` |
 | `dot_minecraft` | `<HOME>\AppData\Roaming\.minecraft` | `<HOME>/.minecraft`                        | `<HOME>/.minecraft`          |
-| `temp`          | `C:\Temp\mcmod`                     | `confstr(_CS_DARWIN_USER_TEMP_DIR,…)`      | `/tmp/mcmod`                       |
+| `temp`          | `C:\Temp\mcmod`                     | `confstr(_CS_DARWIN_USER_TEMP_DIR,…)`      | `/tmp/mcmod`                 |
 
 `paths.data`
 
@@ -148,8 +145,8 @@ distanthorizons.defaults=true
 
 In this example, the target version of minecraft is 1.21.5, and the preferred mod loader is Fabric.
 
-The path to the programs data is overriden from the default application data
-path to `/home/alice/mcmod-data`.
+The path to the programs data is overriden from the default application data path to
+`/home/alice/mcmod-data`.
 
 The projects to download are sodium, faithful-32x, and distanthorizons.
 

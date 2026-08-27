@@ -67,10 +67,10 @@ impl std::fmt::Display for MinecraftVersion {
                 patch,
             } => match patch {
                 Some(patch) => {
-                    write!(f, "{major}.{minor}.{patch}",)
+                    write!(f, "{major}.{minor}.{patch}")
                 }
                 None => {
-                    write!(f, "{major}.{minor}",)
+                    write!(f, "{major}.{minor}")
                 }
             },
             MinecraftVersion::Unknown { version } => {
