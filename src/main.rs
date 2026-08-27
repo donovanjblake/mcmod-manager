@@ -35,6 +35,7 @@ fn load_config(cli: &Cli) -> Result<config::Config> {
     Ok(mcmod)
 }
 
+/// Get all the appropriate mods for the given config
 fn solve_versions(mod_config: &config::Config) -> Result<ModDB> {
     let mut mod_solver = solver::ModSolver::new(mod_config);
     for project in mod_config.projects() {
@@ -54,6 +55,7 @@ fn solve_versions(mod_config: &config::Config) -> Result<ModDB> {
     mod_solver.solve()
 }
 
+/// Get all the appropriate mods for the given config using the offline cache
 fn solve_versions_offline(mod_config: &config::Config) -> Result<ModDB> {
     let mut mod_solver = solver::ModSolverOffline::new(mod_config)?;
     for project in mod_config.projects() {
